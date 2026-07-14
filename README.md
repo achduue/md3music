@@ -1,5 +1,9 @@
 # MD3Music 鸿蒙版
 
+> **声明：本项目由 AI 辅助生成，尚未经过技术验证。**
+>
+> 本项目的全部代码由 AI（TRAE 助手）根据原始 Flutter/Android 项目 [zzyoxml/md3Music](https://github.com/zzyoxml/md3Music) 的源码分析后自动编写，**未在真实 HarmonyOS 设备或模拟器上进行编译、运行或功能验证**。代码中可能存在编译错误、API 调用不正确、逻辑缺陷等问题，请使用者自行审查、测试和修正后再使用。AI 不对代码的可用性、正确性和安全性作任何保证。
+
 基于 [zzyoxml/md3Music](https://github.com/zzyoxml/md3Music) 移植的 HarmonyOS 版本。
 
 Material Design 3 风格音乐播放器，数据来源为酷狗音乐 API。
