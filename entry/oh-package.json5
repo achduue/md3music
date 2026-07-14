@@ -1,0 +1,11 @@
+{
+  "name": "entry",
+  "version": "1.0.0",
+  "description": "MD3Music 鸿蒙版入口模块",
+  "main": "",
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@ohos/axios": "^2.0.0"
+  }
+}
