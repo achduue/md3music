@@ -1,6 +1,9 @@
 /**
  * 用户信息模型
+ * 修复: import 移到文件顶部（ArkTS 要求）
  */
+import { Song } from './Song'
+
 export class UserInfo {
   userid: string = ''
   token: string = ''
@@ -76,5 +79,3 @@ export class HotWord {
   keyword: string = ''
   hotLevel: number = 0
 }
-
-import { Song } from './Song'

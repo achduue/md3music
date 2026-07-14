@@ -1,14 +1,19 @@
 /**
- * 音频播放器管理器
- * 对应原Flutter版 PlayerProvider + AudioService
- * 使用 @ohos.multimedia.audio 实现
+ * 音频播放器管理器 v2.0
+ * 修复: 状态机正确性、错误监听、音频焦点
+ * 新增: AVSession媒体会话、后台播放(长时任务)、通知栏控制
  *
- * 播放流程(对应原版):
- * 1. playOnlineSong(song) → 调用 API 获取播放URL
- * 2. 获取URL后 → 设置音频源并播放
- * 3. 预取后续3首歌的URL
+ * 架构参考:
+ * - 鸿蒙官方 MusicHome Codelab (MediaService.ets 模式)
+ * - AVPlayer 状态机: idle→initialized→prepared→playing→completed
+ * - AVSession: 系统通知栏/锁屏自动展示媒体控制
+ * - 后台播放: AVSession + 长时任务(AUDIO_PLAYBACK)
  */
 import media from '@ohos.multimedia.media'
+import audio from '@ohos.multimedia.audio'
+import avSession from '@ohos.multimedia.avSession'
+import backgroundTaskManager from '@ohos.backgroundTaskManager'
+import wantAgent from '@ohos.app.ability.wantAgent'
 import { Song } from '../models/Song'
 import { KugouApi } from '../api/KugouApi'
 import { AppStorageKeys, AudioQuality, PlayMode } from '../common/Constants'
@@ -17,6 +22,10 @@ import { LyricData, LyricLine } from '../models/UserInfo'
 export class PlayerManager {
   private static instance: PlayerManager
   private avPlayer: media.AVPlayer | null = null
+  private avSession: avSession.AVSession | null = null  // 必须用类成员持有，防止GC回收
+  private isSessionActivated: boolean = false
+  private isContinuousTaskRunning: boolean = false
+
   private _currentSong: Song = new Song()
   private _playList: Song[] = []
   private _currentIndex: number = 0
@@ -28,6 +37,7 @@ export class PlayerManager {
   private _lyricData: LyricData = new LyricData()
   private _currentLyricIndex: number = 0
   private _isPrepared: boolean = false
+  private _isUrlLoading: boolean = false
 
   // 回调
   onPlayingChanged?: (isPlaying: boolean) => void
@@ -51,139 +61,204 @@ export class PlayerManager {
     return PlayerManager.instance
   }
 
-  get currentSong(): Song {
-    return this._currentSong
-  }
-
-  get playList(): Song[] {
-    return this._playList
-  }
-
-  get currentIndex(): number {
-    return this._currentIndex
-  }
-
-  get isPlaying(): boolean {
-    return this._isPlaying
-  }
-
-  get playMode(): PlayMode {
-    return this._playMode
-  }
-
-  get currentPosition(): number {
-    return this._currentPosition
-  }
-
-  get duration(): number {
-    return this._duration
-  }
-
-  get lyricData(): LyricData {
-    return this._lyricData
-  }
-
-  get currentLyricIndex(): number {
-    return this._currentLyricIndex
-  }
+  get currentSong(): Song { return this._currentSong }
+  get playList(): Song[] { return this._playList }
+  get currentIndex(): number { return this._currentIndex }
+  get isPlaying(): boolean { return this._isPlaying }
+  get playMode(): PlayMode { return this._playMode }
+  get currentPosition(): number { return this._currentPosition }
+  get duration(): number { return this._duration }
+  get lyricData(): LyricData { return this._lyricData }
+  get currentLyricIndex(): number { return this._currentLyricIndex }
 
   /**
    * 初始化 AVPlayer
+   * 修复: 在设置 url 之前注册所有监听（官方要求）
+   * 修复: error 是独立事件，不是 stateChange 的状态
    */
   private async initPlayer(): Promise<void> {
     if (this.avPlayer) return
 
     this.avPlayer = await media.createAVPlayer()
 
-    this.avPlayer.on('stateChange', (state: string) => {
+    // 1. 先注册所有监听（关键：在设 url 之前）
+    this.avPlayer.on('stateChange', (state: string, reason: media.StateChangeReason) => {
+      console.info(`[Player] stateChange: ${state}, reason: ${reason}`)
       switch (state) {
         case 'initialized':
-          this.avPlayer?.prepare()
+          // 设置音频渲染类型为音乐
+          try {
+            this.avPlayer!.audioRendererInfo = {
+              usage: audio.StreamUsage.STREAM_USAGE_MUSIC,
+              rendererFlags: 0
+            }
+          } catch (e) {
+            console.warn('[Player] setAudioRendererInfo failed:', e)
+          }
+          this.avPlayer!.prepare()
           break
         case 'prepared':
           this._isPrepared = true
-          this._duration = this.avPlayer?.duration ?? 0
+          this._duration = this.avPlayer!.duration / 1000  // 转为秒
           this.onDurationChanged?.(this._duration)
-          this.avPlayer?.play()
+          this.avPlayer!.play()
+          break
+        case 'playing':
           this._isPlaying = true
           this.onPlayingChanged?.(true)
           AppStorage.setOrCreate(AppStorageKeys.IS_PLAYING, true)
+          this.updateSessionPlaybackState(avSession.PlaybackState.PLAYBACK_STATE_PLAY)
+          break
+        case 'paused':
+          this._isPlaying = false
+          this.onPlayingChanged?.(false)
+          AppStorage.setOrCreate(AppStorageKeys.IS_PLAYING, false)
+          this.updateSessionPlaybackState(avSession.PlaybackState.PLAYBACK_STATE_PAUSE)
           break
         case 'completed':
+          this._isPlaying = false
+          this.onPlayingChanged?.(false)
+          AppStorage.setOrCreate(AppStorageKeys.IS_PLAYING, false)
+          this.updateSessionPlaybackState(avSession.PlaybackState.PLAYBACK_STATE_COMPLETED)
           this.handlePlayCompleted()
           break
+        case 'stopped':
+          this._isPrepared = false
+          break
+        case 'released':
+          this._isPrepared = false
+          break
         case 'error':
-          this.onError?.('播放出错')
+          // error 状态理论上不会走这里，但保险处理
+          console.error('[Player] player entered error state')
+          this.onError?.('播放器进入错误状态')
           break
       }
     })
 
+    // 2. error 是独立事件监听
+    this.avPlayer.on('error', (err: Error) => {
+      console.error('[Player] error event:', err.message)
+      this._isUrlLoading = false
+      this.onError?.(`播放出错: ${err.message}`)
+      // 尝试自动跳下一首
+      setTimeout(() => {
+        if (!this._isPlaying && this._playList.length > 1) {
+          this.next()
+        }
+      }, 1000)
+    })
+
+    // 3. 时间更新
     this.avPlayer.on('timeUpdate', (time: number) => {
       this._currentPosition = time / 1000  // 转为秒
       this.onPositionChanged?.(this._currentPosition)
       this.updateLyricIndex()
+      // 同步到AVSession进度
+      if (this.avSession) {
+        this.avSession.setAVPlaybackState({
+          position: { elapsedTime: time, updateTime: new Date().getTime() }
+        }).catch(() => {})
+      }
+    })
+
+    // 4. 时长更新
+    this.avPlayer.on('durationUpdate', (duration: number) => {
+      this._duration = duration / 1000
+      this.onDurationChanged?.(this._duration)
+    })
+
+    // 5. 音频焦点打断处理
+    this.avPlayer.on('audioInterrupt', (info: audio.InterruptEvent) => {
+      console.info(`[Player] audioInterrupt: ${info.eventType}, ${info.hintType}`)
+      if (info.eventType === audio.InterruptType.INTERRUPT_TYPE_BEGIN) {
+        if (info.hintType === audio.InterruptHint.INTERRUPT_HINT_PAUSE) {
+          // 被电话等打断，暂停播放
+          this._isPlaying = false
+          this.onPlayingChanged?.(false)
+          AppStorage.setOrCreate(AppStorageKeys.IS_PLAYING, false)
+          this.stopContinuousTask()
+        }
+      } else if (info.eventType === audio.InterruptType.INTERRUPT_TYPE_END) {
+        if (info.hintType === audio.InterruptHint.INTERRUPT_HINT_RESUME) {
+          // 打断结束，恢复播放
+          this.avPlayer?.play()
+        }
+      }
     })
   }
 
   /**
    * 播放在线歌曲 - 核心方法
-   * 对应原Flutter: PlayerProvider.playOnlineSong()
-   * 流程: 检查登录 → 获取播放URL → 设置音频源 → 播放 → 预取后续
+   * 修复: URL加载状态管理，防止重复请求
    */
   async playOnlineSong(song: Song): Promise<void> {
-    try {
-      this.onSongChanged?.(song)
-      this._currentSong = song
-      AppStorage.setOrCreate(AppStorageKeys.CURRENT_SONG, JSON.stringify(song))
+    if (this._isUrlLoading) {
+      console.warn('[Player] URL still loading, skip')
+      return
+    }
 
+    this._isUrlLoading = true
+    this.onSongChanged?.(song)
+    this._currentSong = song
+    AppStorage.setOrCreate(AppStorageKeys.CURRENT_SONG, JSON.stringify(song))
+
+    try {
       // 1. 获取播放URL
-      // 对应原Flutter: KugouApiClient.getSongUrl(hash, quality, albumId, albumAudioId)
       const api = KugouApi.getInstance()
       const result = await api.getSongUrl(song.hash, song.albumId, song.albumAudioId)
 
       // 2. 解析播放URL
-      let playUrl = ''
-      const data = result['data'] as Record<string, Object> | undefined
-      if (data) {
-        const info = (data['info'] || data['url_info'] || data) as Record<string, Object>
-        // 尝试多种URL字段
-        playUrl = (info['url'] as string) || (info['play_url'] as string) ||
-          (data['url'] as string) || ''
-
-        // 如果是数组形式
-        if (!playUrl && Array.isArray(info)) {
-          const firstItem = info[0] as Record<string, Object>
-          playUrl = (firstItem['url'] as string) || ''
-        }
-      }
-
+      const playUrl = Song.extractPlayUrl(result)
       if (!playUrl) {
-        this.onError?.('无法获取播放地址')
+        this._isUrlLoading = false
+        this.onError?.('无法获取播放地址，可能需要VIP或歌曲已下架')
+        // 自动跳下一首
+        setTimeout(() => {
+          if (this._playList.length > 1) this.next()
+        }, 1500)
         return
       }
 
       song.url = playUrl
 
-      // 3. 设置音频源并播放
+      // 3. 初始化播放器（如果还没有）
       await this.initPlayer()
-      this.avPlayer?.reset()
-      this._isPrepared = false
+
+      // 4. 切换歌曲前先reset
+      if (this._isPrepared) {
+        this.avPlayer!.reset()
+        this._isPrepared = false
+      }
+
+      // 5. 设置新URL，触发 initialized → prepared → playing
       this.avPlayer!.url = playUrl
 
-      // 4. 获取歌词
+      // 6. 初始化AVSession（如果还没有）
+      if (!this.isSessionActivated) {
+        await this.initAVSession()
+      }
+      // 更新元数据到通知栏
+      this.updateSessionMetadata(song)
+
+      // 7. 获取歌词（异步）
       this.fetchLyric(song)
 
-      // 5. 预取后续歌曲URL
+      // 8. 预取后续歌曲URL
       this.prefetchNextSongs()
 
+      // 9. 启动后台播放长时任务
+      await this.startContinuousTask()
+
+      this._isUrlLoading = false
     } catch (err) {
+      this._isUrlLoading = false
       this.onError?.(`播放失败: ${err}`)
     }
   }
 
   /**
    * 播放列表
-   * 对应原Flutter: PlayerProvider.playOnlinePlaylist(songs, startIndex)
    */
   async playOnlinePlaylist(songs: Song[], startIndex: number = 0): Promise<void> {
     if (songs.length === 0) return
@@ -201,19 +276,13 @@ export class PlayerManager {
     if (!this.avPlayer || !this._isPrepared) return
     if (this._isPlaying) {
       this.avPlayer.pause()
-      this._isPlaying = false
+      this.stopContinuousTask()
     } else {
       this.avPlayer.play()
-      this._isPlaying = true
+      this.startContinuousTask()
     }
-    this.onPlayingChanged?.(this._isPlaying)
-    AppStorage.setOrCreate(AppStorageKeys.IS_PLAYING, this._isPlaying)
   }
 
-  /**
-   * 上一曲
-   * 对应原Flutter: PlayerProvider.previous()
-   */
   async previous(): Promise<void> {
     if (this._playList.length === 0) return
     if (this._playMode === PlayMode.SHUFFLE) {
@@ -225,10 +294,6 @@ export class PlayerManager {
     await this.playOnlineSong(this._playList[this._currentIndex])
   }
 
-  /**
-   * 下一曲
-   * 对应原Flutter: PlayerProvider.next()
-   */
   async next(): Promise<void> {
     if (this._playList.length === 0) return
     if (this._playMode === PlayMode.SHUFFLE) {
@@ -242,38 +307,30 @@ export class PlayerManager {
 
   /**
    * 跳转进度
-   * 对应原Flutter: _audioService.seek(position)
    */
   async seek(position: number): Promise<void> {
     if (!this.avPlayer || !this._isPrepared) return
-    this.avPlayer.seek(position * 1000)  // 转为毫秒
+    this.avPlayer.seek(position * 1000, media.SeekMode.SEEK_PREV_SYNC)
     this._currentPosition = position
     this.onPositionChanged?.(position)
   }
 
-  /**
-   * 设置播放模式
-   */
   setPlayMode(mode: PlayMode): void {
     this._playMode = mode
     AppStorage.setOrCreate(AppStorageKeys.PLAY_MODE, mode)
+    // 同步到AVSession
+    this.updateSessionLoopMode(mode)
   }
 
-  /**
-   * 切换播放模式
-   */
   togglePlayMode(): PlayMode {
     const modes = [PlayMode.LOOP, PlayMode.SINGLE, PlayMode.SHUFFLE]
     const idx = modes.indexOf(this._playMode)
     this._playMode = modes[(idx + 1) % modes.length]
     AppStorage.setOrCreate(AppStorageKeys.PLAY_MODE, this._playMode)
+    this.updateSessionLoopMode(this._playMode)
     return this._playMode
   }
 
-  /**
-   * 设置音质
-   * 对应原Flutter: AudioQuality 枚举
-   */
   setAudioQuality(quality: AudioQuality): void {
     this._audioQuality = quality
     AppStorage.setOrCreate(AppStorageKeys.AUDIO_QUALITY, quality)
@@ -281,33 +338,186 @@ export class PlayerManager {
 
   /**
    * 播放完成处理
-   * 对应原Flutter: _handlePlaybackCompleted()
    */
   private handlePlayCompleted(): void {
     if (this._playMode === PlayMode.SINGLE) {
-      // 单曲循环：回到开头重新播放
       this.seek(0)
       this.avPlayer?.play()
     } else {
-      // 列表循环 / 随机：播放下一首
       if (this._currentIndex < this._playList.length - 1 || this._playMode === PlayMode.LOOP) {
         this.next()
       } else {
         this.onPlayListEnded?.()
+        this.stopContinuousTask()
       }
     }
   }
 
+  // ==================== AVSession 媒体会话 ====================
+
+  /**
+   * 初始化 AVSession
+   * 新增: 系统通知栏/锁屏自动展示媒体控制
+   * 参考: 鸿蒙官方 AVSessionKit 接入指南
+   */
+  private async initAVSession(): Promise<void> {
+    try {
+      const context = getContext(this)
+      this.avSession = await avSession.createAVSession(context, 'MD3Music', 'audio')
+
+      // 注册控制命令（通知栏/锁屏按钮响应）
+      this.avSession.on('play', () => {
+        console.info('[AVSession] play command')
+        this.avPlayer?.play()
+      })
+      this.avSession.on('pause', () => {
+        console.info('[AVSession] pause command')
+        this.avPlayer?.pause()
+      })
+      this.avSession.on('playNext', () => {
+        console.info('[AVSession] playNext command')
+        this.next()
+      })
+      this.avSession.on('playPrevious', () => {
+        console.info('[AVSession] playPrevious command')
+        this.previous()
+      })
+      this.avSession.on('seek', (time: number) => {
+        console.info(`[AVSession] seek to ${time}`)
+        this.seek(time / 1000)
+      })
+      this.avSession.on('setLoopMode', (mode: avSession.LoopMode) => {
+        console.info(`[AVSession] setLoopMode: ${mode}`)
+        if (mode === avSession.LoopMode.LOOP_MODE_SINGLE) {
+          this.setPlayMode(PlayMode.SINGLE)
+        } else if (mode === avSession.LoopMode.LOOP_MODE_SHUFFLE) {
+          this.setPlayMode(PlayMode.SHUFFLE)
+        } else {
+          this.setPlayMode(PlayMode.LOOP)
+        }
+      })
+
+      // 激活会话（必须在元数据和命令注册后）
+      await this.avSession.activate()
+      this.isSessionActivated = true
+      console.info('[AVSession] activated successfully')
+    } catch (err) {
+      console.error('[AVSession] init failed:', err)
+    }
+  }
+
+  /**
+   * 更新通知栏元数据
+   */
+  private updateSessionMetadata(song: Song): void {
+    if (!this.avSession) return
+    const metadata: avSession.AVMetadata = {
+      assetId: song.id || song.hash,
+      title: song.title || '未知歌曲',
+      artist: song.artist || '未知艺术家',
+      album: song.album || '',
+      mediaImage: song.artworkUri || '',
+      duration: this._duration * 1000,  // 毫秒
+      lyric: this._lyricData.rawLrc || '',  // LRC格式歌词
+    }
+    this.avSession.setAVMetadata(metadata).catch((err: Error) => {
+      console.warn('[AVSession] setAVMetadata failed:', err)
+    })
+  }
+
+  /**
+   * 更新通知栏播放状态
+   */
+  private updateSessionPlaybackState(state: avSession.PlaybackState): void {
+    if (!this.avSession) return
+    const playbackState: avSession.AVPlaybackState = {
+      state: state,
+      position: { elapsedTime: this._currentPosition * 1000, updateTime: new Date().getTime() },
+      speed: 1.0,
+      bufferedTime: 0,
+    }
+    this.avSession.setAVPlaybackState(playbackState).catch((err: Error) => {
+      console.warn('[AVSession] setAVPlaybackState failed:', err)
+    })
+  }
+
+  /**
+   * 更新循环模式到通知栏
+   */
+  private updateSessionLoopMode(mode: PlayMode): void {
+    if (!this.avSession) return
+    let loopMode: avSession.LoopMode
+    switch (mode) {
+      case PlayMode.SINGLE: loopMode = avSession.LoopMode.LOOP_MODE_SINGLE; break
+      case PlayMode.SHUFFLE: loopMode = avSession.LoopMode.LOOP_MODE_SHUFFLE; break
+      default: loopMode = avSession.LoopMode.LOOP_MODE_LIST; break
+    }
+    this.avSession.setAVPlaybackState({ loopMode: loopMode }).catch(() => {})
+  }
+
+  // ==================== 后台播放长时任务 ====================
+
+  /**
+   * 启动后台播放长时任务
+   * 新增: 防止应用退至后台被系统挂起
+   * 参考: 鸿蒙官方 backgroundTaskManager + wantAgent
+   */
+  async startContinuousTask(): Promise<void> {
+    if (this.isContinuousTaskRunning) return
+    try {
+      // 构建点击通知拉回应用的 WantAgent
+      const wantAgentInfo: wantAgent.WantAgentInfo = {
+        wants: [{
+          bundleName: 'com.md3music.harmonyos',
+          abilityName: 'EntryAbility'
+        }],
+        operationType: wantAgent.OperationType.START_ABILITY,
+        requestCode: 0,
+        wantAgentFlags: [wantAgent.WantAgentFlags.UPDATE_PRESENT_FLAG]
+      }
+      const agent = await wantAgent.getWantAgent(wantAgentInfo)
+
+      await backgroundTaskManager.startBackgroundRunning(
+        getContext(this),
+        backgroundTaskManager.BackgroundMode.AUDIO_PLAYBACK,
+        agent
+      )
+      this.isContinuousTaskRunning = true
+
+      // 让 AVSession 也能通过通知拉起应用
+      this.avSession?.setLaunchAbility(agent)
+      console.info('[BackgroundTask] continuous task started')
+    } catch (err) {
+      console.warn('[BackgroundTask] start failed:', err)
+    }
+  }
+
+  /**
+   * 停止后台播放长时任务
+   */
+  async stopContinuousTask(): Promise<void> {
+    if (!this.isContinuousTaskRunning) return
+    try {
+      await backgroundTaskManager.stopBackgroundRunning(getContext(this))
+      this.isContinuousTaskRunning = false
+      console.info('[BackgroundTask] continuous task stopped')
+    } catch (err) {
+      console.warn('[BackgroundTask] stop failed:', err)
+    }
+  }
+
+  // ==================== 歌词 ====================
+
   /**
    * 获取歌词
-   * 对应原Flutter: KugouProvider.loadLyric(id, accesskey)
-   * API: GET /lyric?id=xxx&accesskey=xxx&decode=1&fmt=lrc
    */
   private async fetchLyric(song: Song): Promise<void> {
     try {
-      // 从搜索结果或特权信息中获取歌词参数
-      if (!song.lyricId && !song.accesskey) return
-
+      if (!song.lyricId && !song.accesskey) {
+        // 尝试从搜索结果中的 lyricId 获取
+        console.info('[Player] no lyric id, skip')
+        return
+      }
       const api = KugouApi.getInstance()
       const result = await api.getLyric(song.lyricId, song.accesskey)
       const data = result as Record<string, Object>
@@ -315,35 +525,37 @@ export class PlayerManager {
       if (data['status'] === 1 && data['data']) {
         const lyricInfo = data['data'] as Record<string, Object>
         const content = (lyricInfo['decodeContent'] || lyricInfo['content'] || '') as string
-
         if (content) {
           this._lyricData = this.parseLrc(content)
           this._currentLyricIndex = 0
+          // 更新AVSession歌词
+          if (this.avSession) {
+            this.updateSessionMetadata(song)
+          }
         }
       }
     } catch (err) {
-      // 歌词获取失败不影响播放
-      console.error('获取歌词失败:', err)
+      console.error('[Player] fetchLyric failed:', err)
     }
   }
 
   /**
    * 解析LRC歌词
-   * 格式: [mm:ss.xx]歌词文本
    */
   private parseLrc(lrcContent: string): LyricData {
     const lyricData = new LyricData()
     lyricData.rawLrc = lrcContent
-
     const lines = lrcContent.split('\n')
+    const timeRegex = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/
+
     for (const line of lines) {
-      const match = line.match(/\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/)
+      const match = line.match(timeRegex)
       if (match) {
         const minutes = parseInt(match[1])
         const seconds = parseInt(match[2])
         const ms = parseInt(match[3].padEnd(3, '0'))
         const time = minutes * 60 * 1000 + seconds * 1000 + ms
-        const text = match[4].trim()
+        const text = line.replace(timeRegex, '').trim()
         if (text) {
           const lyricLine = new LyricLine()
           lyricLine.time = time
@@ -352,19 +564,13 @@ export class PlayerManager {
         }
       }
     }
-
     lyricData.lines.sort((a, b) => a.time - b.time)
     return lyricData
   }
 
-  /**
-   * 更新当前歌词行索引
-   * 对应原Flutter: 歌词同步滚动逻辑
-   */
   private updateLyricIndex(): void {
     if (this._lyricData.lines.length === 0) return
     const currentMs = this._currentPosition * 1000
-
     for (let i = this._lyricData.lines.length - 1; i >= 0; i--) {
       if (currentMs >= this._lyricData.lines[i].time) {
         if (i !== this._currentLyricIndex) {
@@ -378,35 +584,24 @@ export class PlayerManager {
 
   /**
    * 预取后续歌曲URL
-   * 对应原Flutter: _prefetchNextSongs()
-   * 预取播放列表中后续3首歌的URL
    */
   private prefetchNextSongs(): void {
     if (this._playList.length === 0) return
     const api = KugouApi.getInstance()
     const prefetchCount = Math.min(3, this._playList.length - this._currentIndex - 1)
-
     for (let i = 1; i <= prefetchCount; i++) {
       const idx = (this._currentIndex + i) % this._playList.length
       const song = this._playList[idx]
       if (song && !song.url) {
-        // 异步预取，不阻塞当前播放
         api.getSongUrl(song.hash, song.albumId, song.albumAudioId)
           .then((result) => {
-            const data = result['data'] as Record<string, Object> | undefined
-            if (data) {
-              const info = data as Record<string, Object>
-              song.url = (info['url'] as string) || ''
-            }
+            song.url = Song.extractPlayUrl(result)
           })
           .catch(() => {})
       }
     }
   }
 
-  /**
-   * 格式化时长 mm:ss
-   */
   static formatDuration(seconds: number): string {
     if (seconds <= 0 || isNaN(seconds)) return '00:00'
     const min = Math.floor(seconds / 60)
@@ -416,11 +611,21 @@ export class PlayerManager {
 
   /**
    * 释放资源
+   * 修复: 正确释放 AVPlayer 和 AVSession
    */
   async release(): Promise<void> {
+    await this.stopContinuousTask()
+    if (this.avSession) {
+      await this.avSession.deactivate().catch(() => {})
+      await this.avSession.destroy().catch(() => {})
+      this.avSession = null
+      this.isSessionActivated = false
+    }
     if (this.avPlayer) {
       this.avPlayer.release()
       this.avPlayer = null
     }
+    this._isPrepared = false
+    this._isPlaying = false
   }
 }
