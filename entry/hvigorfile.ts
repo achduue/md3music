@@ -1,2 +1,6 @@
 // entry/hvigorfile.ts
-export { hapTasks } from '@ohos/hvigor';
+import { hapTasks } from '@ohos/hvigor';
+
+export default {
+  system: hapTasks,
+};

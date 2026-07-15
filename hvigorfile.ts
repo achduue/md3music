@@ -1,2 +1,6 @@
 // hvigorfile.ts
-export { appTasks } from '@ohos/hvigor';
+import { appTasks } from '@ohos/hvigor';
+
+export default {
+  system: appTasks,
+};
