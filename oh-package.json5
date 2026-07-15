@@ -1,4 +1,5 @@
 {
+  "modelVersion": "5.0.0",
   "name": "md3music_harmonyos",
   "version": "1.0.0",
   "description": "MD3Music 鸿蒙版 - 基于酷狗音乐API的Material Design 3音乐播放器",

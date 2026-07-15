@@ -28,8 +28,6 @@ jobs:
       image: registry.cn-qingdao.aliyuncs.com/xuxiaoweicomcn/hmos-command:5.0.3.906
       env:
         LANG: C.UTF-8
-        npm_config_auto_install_peers: "true"
-        npm_config_shamefully_hoist: "true"
       options: --user root
     timeout-minutes: 30
 
@@ -46,13 +44,6 @@ jobs:
           npm config set "@ohos:registry" https://repo.harmonyos.com/npm/
           ohpm config set registry https://ohpm.openharmony.cn/ohpm/
           ohpm config set strict_ssl false
-
-      - name: Configure pnpm
-        run: |
-          echo "auto-install-peers=true" >> "$HOME/.npmrc"
-          echo "shamefully-hoist=true" >> "$HOME/.npmrc"
-          echo "--- .npmrc contents ---"
-          cat "$HOME/.npmrc"
 
       - name: Verify environment
         run: |
@@ -72,11 +63,6 @@ jobs:
         run: |
           echo "[INFO] Cleaning hvigor project cache..."
           rm -rf /github/home/.hvigor/project_caches || true
-
-      - name: List available hvigor tasks
-        run: |
-          echo "[INFO] Available hvigor tasks:"
-          hvigorw tasks --no-daemon
 
       - name: Build HAP
         run: |
