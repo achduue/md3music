@@ -1,5 +1,5 @@
 // hvigorfile.ts
-import { appTasks } from '@ohos/hvigor';
+import { appTasks } from '@ohos/hvigor-ohos-plugin';
 
 export default {
   system: appTasks,
