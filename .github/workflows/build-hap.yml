@@ -47,17 +47,11 @@ jobs:
           ohpm config set registry https://ohpm.openharmony.cn/ohpm/
           ohpm config set strict_ssl false
 
-      - name: Configure pnpm peer deps
+      - name: Configure pnpm
         run: |
-          # Set pnpm config globally so hvigorw's internal pnpm respects it
-          mkdir -p /github/home
-          cat > /github/home/.npmrc << 'EOF'
-          auto-install-peers=true
-          shamefully-hoist=true
-          EOF
-          # Also set via npm config (pnpm reads npm config)
-          npm config set auto-install-peers true
-          npm config set shamefully-hoist true
+          echo "auto-install-peers=true" > "$HOME/.npmrc"
+          echo "shamefully-hoist=true" >> "$HOME/.npmrc"
+          cat "$HOME/.npmrc"
 
       - name: Verify environment
         run: |
