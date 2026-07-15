@@ -42,10 +42,16 @@ jobs:
 
       - name: Configure registries
         run: |
-          npm config set registry https://repo.huaweicloud.com/repository/npm/
+          npm config set registry https://registry.npmmirror.com/
           npm config set "@ohos:registry" https://repo.harmonyos.com/npm/
           ohpm config set registry https://ohpm.openharmony.cn/ohpm/
           ohpm config set strict_ssl false
+
+      - name: Pre-install pnpm
+        run: |
+          echo "[INFO] Pre-installing pnpm to avoid hvigor wrapper network issues..."
+          npm install -g pnpm@8.13.1
+          pnpm -v
 
       - name: Configure pnpm
         run: |
