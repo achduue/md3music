@@ -28,6 +28,8 @@ jobs:
       image: registry.cn-qingdao.aliyuncs.com/xuxiaoweicomcn/hmos-command:5.0.3.906
       env:
         LANG: C.UTF-8
+        npm_config_auto_install_peers: "true"
+        npm_config_shamefully_hoist: "true"
       options: --user root
     timeout-minutes: 30
 
@@ -38,15 +40,24 @@ jobs:
       - name: Fix checkout ownership
         run: chown -R root:root .
 
-      - name: Configure npm registry
+      - name: Configure registries
         run: |
           npm config set registry https://repo.huaweicloud.com/repository/npm/
           npm config set "@ohos:registry" https://repo.harmonyos.com/npm/
-
-      - name: Configure ohpm registry
-        run: |
           ohpm config set registry https://ohpm.openharmony.cn/ohpm/
           ohpm config set strict_ssl false
+
+      - name: Configure pnpm peer deps
+        run: |
+          # Set pnpm config globally so hvigorw's internal pnpm respects it
+          mkdir -p /github/home
+          cat > /github/home/.npmrc << 'EOF'
+          auto-install-peers=true
+          shamefully-hoist=true
+          EOF
+          # Also set via npm config (pnpm reads npm config)
+          npm config set auto-install-peers true
+          npm config set shamefully-hoist true
 
       - name: Verify environment
         run: |
@@ -59,18 +70,18 @@ jobs:
 
       - name: Install ohpm dependencies
         run: |
-          echo "[INFO] Installing project dependencies..."
+          echo "[INFO] Installing ohpm dependencies..."
           ohpm install --all
 
-      - name: Install hvigor npm dependencies
+      - name: Clean hvigor cache
         run: |
-          echo "[INFO] Installing hvigor npm dependencies..."
-          npm install @ohos/hvigor@5.8.9 @ohos/hvigor-ohos-plugin@5.8.9 --save-dev
+          echo "[INFO] Cleaning hvigor project cache..."
+          rm -rf /github/home/.hvigor/project_caches || true
 
       - name: List available hvigor tasks
         run: |
           echo "[INFO] Available hvigor tasks:"
-          hvigorw tasks --no-daemon || true
+          hvigorw tasks --no-daemon
 
       - name: Build HAP
         run: |
