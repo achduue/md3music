@@ -7,9 +7,5 @@
   "license": "MIT",
   "dependencies": {
     "@ohos/axios": "^2.0.0"
-  },
-  "devDependencies": {
-    "@ohos/hvigor": "5.8.9",
-    "@ohos/hvigor-ohos-plugin": "5.8.9"
   }
 }
