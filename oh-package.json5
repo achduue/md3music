@@ -6,7 +6,6 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@ohos/axios": "^2.0.0",
-    "@ohos/router": "^1.0.0"
+    "@ohos/axios": "^2.0.0"
   }
 }

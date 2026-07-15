@@ -62,14 +62,6 @@ jobs:
           echo "[INFO] Installing project dependencies..."
           ohpm install --all
 
-      - name: Install hvigor dependencies
-        run: |
-          echo "[INFO] Installing hvigor npm dependencies..."
-          npm install
-
-      - name: Clean project
-        run: hvigorw clean --no-daemon || true
-
       - name: Build HAP
         run: |
           BUILD_MODE="${{ github.event.inputs.build_mode || 'debug' }}"
