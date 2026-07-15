@@ -1,0 +1,19 @@
+#!/bin/sh
+# ---------------------------------------------------------------------------
+#  HarmonyOS hvigor wrapper script (Unix)
+# ---------------------------------------------------------------------------
+WORKING_DIR=$(cd "$(dirname "$0")"; pwd)
+HVIGOR_WRAPPER_PATH="${WORKING_DIR}/hvigor/hvigor-wrapper.js"
+
+# Node.js binary path (use system default if not set)
+NODE_BIN=node
+
+# hvigor config
+HVIGOR_CONFIG="${WORKING_DIR}/hvigor/hvigor-config.json5"
+
+if [ ! -f "$HVIGOR_WRAPPER_PATH" ]; then
+    echo "Error: hvigor-wrapper.js not found at $HVIGOR_WRAPPER_PATH"
+    exit 1
+fi
+
+exec "$NODE_BIN" "$HVIGOR_WRAPPER_PATH" "$@"
