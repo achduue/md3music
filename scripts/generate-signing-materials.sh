@@ -83,10 +83,21 @@ java -jar "$SIGN_TOOL" generate-profile-cert \
   -issuerKeyPwd "123456" \
   -validity "3650"
 
-# 步骤5: 从应用证书中提取 distribution-certificate (base64编码)
-# PEM 文件中第一个证书的 base64 内容（去掉 BEGIN/END 标记）
-DIST_CERT=$(awk '/-----BEGIN CERTIFICATE-----/{c++} c==1{print} /-----END CERTIFICATE-----/{if(c==1)exit}' signing/md3music.pem \
-  | sed '/-----BEGIN/d;/-----END/d' | tr -d '\n')
+# 步骤5: 从应用证书中提取 distribution-certificate (base64编码 DER格式)
+# 使用 openssl 将 PEM 证书转为 DER 格式，再 base64 编码
+# 先提取 PEM 文件中的第一个证书（叶子证书）
+awk '/-----BEGIN CERTIFICATE-----/{c++} c==1{print} /-----END CERTIFICATE-----/{if(c==1)exit}' \
+  signing/md3music.pem > signing/leaf-cert.pem
+
+# 使用 openssl 转为 DER 格式并 base64 编码（确保输出是纯净的 base64）
+if command -v openssl &> /dev/null; then
+    DIST_CERT=$(openssl x509 -in signing/leaf-cert.pem -outform DER | base64 | tr -d '\n')
+    echo "Used openssl for cert conversion"
+else
+    # 回退方案：直接提取 PEM 中的 base64 内容
+    DIST_CERT=$(sed '/-----BEGIN/d;/-----END/d;/^$/d' signing/leaf-cert.pem | tr -d '\n\r ')
+    echo "Used fallback PEM extraction (openssl not found)"
+fi
 echo "Distribution cert length: ${#DIST_CERT}"
 
 # 创建 Profile 模板 JSON (使用官方 OpenHarmony 格式: kebab-case)
