@@ -111,7 +111,8 @@ jobs:
             -keystoreFile "signing/md3music.p12" \
             -outFile "md3music-signed.hap" \
             -keyPwd "123456" \
-            -keystorePwd "123456"
+            -keystorePwd "123456" \
+            -certPath "signing/rootCA.cer"
 
       - name: Find and collect signed HAP
         run: |

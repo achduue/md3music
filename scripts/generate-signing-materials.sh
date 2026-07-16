@@ -83,8 +83,15 @@ java -jar "$SIGN_TOOL" generate-profile-cert \
   -issuerKeyPwd "123456" \
   -validity "3650"
 
-# 步骤5: 创建 Profile 模板 JSON (使用官方 OpenHarmony 格式: kebab-case)
-cat > signing/profile-template.json << 'EOF'
+# 步骤5: 从应用证书中提取 distribution-certificate (base64编码)
+# PEM 文件中第一个证书的 base64 内容（去掉 BEGIN/END 标记）
+DIST_CERT=$(awk '/-----BEGIN CERTIFICATE-----/{c++} c==1{print} /-----END CERTIFICATE-----/{if(c==1)exit}' signing/md3music.pem \
+  | sed '/-----BEGIN/d;/-----END/d' | tr -d '\n')
+echo "Distribution cert length: ${#DIST_CERT}"
+
+# 创建 Profile 模板 JSON (使用官方 OpenHarmony 格式: kebab-case)
+# 注意: 使用不带引号的 EOF 以便变量展开
+cat > signing/profile-template.json << EOF
 {
   "version-name": "1.0.0",
   "version-code": 1,
@@ -97,7 +104,7 @@ cat > signing/profile-template.json << 'EOF'
   "type": "release",
   "bundle-info": {
     "developer-id": "MD3Music",
-    "distribution-certificate": "",
+    "distribution-certificate": "${DIST_CERT}",
     "bundle-name": "com.md3music.harmonyos",
     "apl": "normal",
     "app-feature": "hos_app"
