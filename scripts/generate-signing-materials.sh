@@ -83,26 +83,32 @@ java -jar "$SIGN_TOOL" generate-profile-cert \
   -issuerKeyPwd "123456" \
   -validity "3650"
 
-# 步骤5: 创建 Profile 模板 JSON
+# 步骤5: 创建 Profile 模板 JSON (使用官方 OpenHarmony 格式: kebab-case)
 cat > signing/profile-template.json << 'EOF'
 {
-  "version": "1.0.0",
-  "app-name": "md3music",
-  "app-type": "release",
-  "bundle-name": "com.md3music.harmonyos",
-  "bundleInfo": {
-    "bundleName": "com.md3music.harmonyos",
-    "appFeature": "hos_app",
-    "appDistributionType": "app_gallery",
-    "developerId": "MD3Music",
-    "distributionCertificate": ""
-  },
-  "development-time": "2026-01-01",
-  "distribution-type": "os_shared",
-  "app-distribution-type": "app_gallery",
+  "version-name": "1.0.0",
+  "version-code": 1,
+  "app-distribution-type": "os_integration",
   "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "validity": {
+    "not-before": 1594865258,
+    "not-after": 1893456000
+  },
   "type": "release",
-  "app-feature": "hos_app"
+  "bundle-info": {
+    "developer-id": "MD3Music",
+    "distribution-certificate": "",
+    "bundle-name": "com.md3music.harmonyos",
+    "apl": "normal",
+    "app-feature": "hos_app"
+  },
+  "acls": {
+    "allowed-acls": [""]
+  },
+  "permissions": {
+    "restricted-permissions": []
+  },
+  "issuer": "pki_internal"
 }
 EOF
 
