@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+# 密码（至少32字符，hvigorw 签名要求）
+KEY_PWD="md3music_signing_password_20240101"
+
 # 查找 hap-sign-tool.jar
 SIGN_TOOL=$(find / -name "hap-sign-tool.jar" 2>/dev/null | head -1)
 if [ -z "$SIGN_TOOL" ]; then
@@ -17,8 +20,8 @@ java -jar "$SIGN_TOOL" generate-keypair \
   -keyAlg "ECC" \
   -keySize "NIST-P-256" \
   -keystoreFile "signing/md3music.p12" \
-  -keyPwd "123456" \
-  -keystorePwd "123456"
+  -keyPwd "$KEY_PWD" \
+  -keystorePwd "$KEY_PWD"
 
 # 步骤2: 生成 CA 证书 (需要先为CA生成密钥对)
 java -jar "$SIGN_TOOL" generate-keypair \
@@ -26,8 +29,8 @@ java -jar "$SIGN_TOOL" generate-keypair \
   -keyAlg "ECC" \
   -keySize "NIST-P-256" \
   -keystoreFile "signing/md3music.p12" \
-  -keyPwd "123456" \
-  -keystorePwd "123456"
+  -keyPwd "$KEY_PWD" \
+  -keystorePwd "$KEY_PWD"
 
 java -jar "$SIGN_TOOL" generate-ca \
   -keyAlias "md3music-ca" \
@@ -37,8 +40,8 @@ java -jar "$SIGN_TOOL" generate-ca \
   -subject "C=CN,O=MD3Music,OU=Dev,CN=MD3Music CA" \
   -keystoreFile "signing/md3music.p12" \
   -outFile "signing/rootCA.cer" \
-  -keyPwd "123456" \
-  -keystorePwd "123456" \
+  -keyPwd "$KEY_PWD" \
+  -keystorePwd "$KEY_PWD" \
   -validity "3650"
 
 # 步骤3: 生成应用签名证书
@@ -53,9 +56,9 @@ java -jar "$SIGN_TOOL" generate-app-cert \
   -rootCaCertFile "signing/rootCA.cer" \
   -outForm "certChain" \
   -outFile "signing/md3music.pem" \
-  -keyPwd "123456" \
-  -keystorePwd "123456" \
-  -issuerKeyPwd "123456" \
+  -keyPwd "$KEY_PWD" \
+  -keystorePwd "$KEY_PWD" \
+  -issuerKeyPwd "$KEY_PWD" \
   -validity "3650"
 
 # 步骤4: 生成 Profile 签名证书 (需要先为profile生成密钥对)
@@ -64,8 +67,8 @@ java -jar "$SIGN_TOOL" generate-keypair \
   -keyAlg "ECC" \
   -keySize "NIST-P-256" \
   -keystoreFile "signing/md3music.p12" \
-  -keyPwd "123456" \
-  -keystorePwd "123456"
+  -keyPwd "$KEY_PWD" \
+  -keystorePwd "$KEY_PWD"
 
 java -jar "$SIGN_TOOL" generate-profile-cert \
   -keyAlias "md3music-profile-key" \
@@ -78,9 +81,9 @@ java -jar "$SIGN_TOOL" generate-profile-cert \
   -rootCaCertFile "signing/rootCA.cer" \
   -outForm "certChain" \
   -outFile "signing/md3music-profile.pem" \
-  -keyPwd "123456" \
-  -keystorePwd "123456" \
-  -issuerKeyPwd "123456" \
+  -keyPwd "$KEY_PWD" \
+  -keystorePwd "$KEY_PWD" \
+  -issuerKeyPwd "$KEY_PWD" \
   -validity "3650"
 
 # 步骤5: 从应用证书中提取 distribution-certificate (base64编码 DER格式)
@@ -139,12 +142,10 @@ java -jar "$SIGN_TOOL" sign-profile \
   -inFile "signing/profile-template.json" \
   -keystoreFile "signing/md3music.p12" \
   -outFile "signing/md3music.p7b" \
-  -keyPwd "123456" \
-  -keystorePwd "123456"
+  -keyPwd "$KEY_PWD" \
+  -keystorePwd "$KEY_PWD"
 
-# 步骤7: 将 PEM 证书链转为 .cer (取第一个证书)
-# 实际上 hap-sign-tool 的 generate-app-cert 输出的 pem 就是证书链
-# build-profile.json5 的 certPath 可以指向 .pem 文件
+# 步骤7: 将 PEM 证书链复制为 .cer
 cp signing/md3music.pem signing/md3music.cer
 
 echo "=== Signing materials generated ==="

@@ -97,9 +97,9 @@ jobs:
                   "type": "HarmonyOS",
                   "material": {
                     "certpath": "signing/md3music.pem",
-                    "storePassword": "123456",
+                    "storePassword": "md3music_signing_password_20240101",
                     "keyAlias": "md3music-key",
-                    "keyPassword": "123456",
+                    "keyPassword": "md3music_signing_password_20240101",
                     "profile": "signing/md3music.p7b",
                     "signAlg": "SHA256withECDSA",
                     "storeFile": "signing/md3music.p12"
