@@ -86,50 +86,47 @@ java -jar "$SIGN_TOOL" generate-profile-cert \
   -issuerKeyPwd "$KEY_PWD" \
   -validity "3650"
 
-# 步骤5: 使用 Python 生成 Profile 模板 JSON
+# 步骤5: 使用 Node.js 生成 Profile 模板 JSON
 # 按照官方 autosign.py 的方式，distribution-certificate 使用完整 PEM 内容（含 BEGIN/END 标记）
-python3 -c "
-import json
+node -e "
+const fs = require('fs');
 
-# 读取应用证书 PEM 文件，提取第一个证书（叶子证书）
-with open('signing/md3music.pem', 'r') as f:
-    cert_content = f.read()
+// 读取应用证书 PEM 文件
+const certContent = fs.readFileSync('signing/md3music.pem', 'utf-8');
 
-# 提取第一个证书块（包含 BEGIN/END 标记）
-first_cert = cert_content.split('-----END CERTIFICATE-----')[0] + '-----END CERTIFICATE-----\n'
+// 提取第一个证书块（包含 BEGIN/END 标记）
+const firstCert = certContent.split('-----END CERTIFICATE-----')[0] + '-----END CERTIFICATE-----\n';
 
-# 构建 profile 模板
-profile = {
-    'version-name': '1.0.0',
-    'version-code': 1,
-    'app-distribution-type': 'os_integration',
-    'uuid': 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-    'validity': {
-        'not-before': 1594865258,
-        'not-after': 1893456000
-    },
-    'type': 'release',
-    'bundle-info': {
-        'developer-id': 'MD3Music',
-        'distribution-certificate': first_cert,
-        'bundle-name': 'com.md3music.harmonyos',
-        'apl': 'normal',
-        'app-feature': 'hos_app'
-    },
-    'acls': {
-        'allowed-acls': ['']
-    },
-    'permissions': {
-        'restricted-permissions': []
-    },
-    'issuer': 'pki_internal'
-}
+// 构建 profile 模板
+const profile = {
+  'version-name': '1.0.0',
+  'version-code': 1,
+  'app-distribution-type': 'os_integration',
+  'uuid': 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+  'validity': {
+    'not-before': 1594865258,
+    'not-after': 1893456000
+  },
+  'type': 'release',
+  'bundle-info': {
+    'developer-id': 'MD3Music',
+    'distribution-certificate': firstCert,
+    'bundle-name': 'com.md3music.harmonyos',
+    'apl': 'normal',
+    'app-feature': 'hos_app'
+  },
+  'acls': {
+    'allowed-acls': ['']
+  },
+  'permissions': {
+    'restricted-permissions': []
+  },
+  'issuer': 'pki_internal'
+};
 
-# 写入 JSON 文件
-with open('signing/profile-template.json', 'w') as f:
-    json.dump(profile, f, indent=2)
-
-print(f'Profile template created. distribution-certificate length: {len(first_cert)}')
+// 写入 JSON 文件
+fs.writeFileSync('signing/profile-template.json', JSON.stringify(profile, null, 2));
+console.log('Profile template created. distribution-certificate length: ' + firstCert.length);
 "
 
 # 步骤6: 签名 Profile 生成 .p7b
