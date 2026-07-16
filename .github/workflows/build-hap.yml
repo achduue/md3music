@@ -81,82 +81,50 @@ jobs:
           echo "[INFO] Cleaning hvigor project cache..."
           rm -rf /github/home/.hvigor/project_caches || true
 
+      - name: Build unsigned HAP
+        run: |
+          BUILD_MODE="${{ github.event.inputs.build_mode || 'debug' }}"
+          echo "[INFO] Building unsigned HAP in ${BUILD_MODE} mode..."
+          hvigorw assembleHap \
+            --mode module \
+            -p product=default \
+            -p buildMode=${BUILD_MODE} \
+            --no-daemon
+
       - name: Generate signing materials
         run: |
           chmod +x scripts/generate-signing-materials.sh
           bash scripts/generate-signing-materials.sh
 
-      - name: Configure signing in build-profile
+      - name: Sign HAP
         run: |
-          cat > build-profile.json5 << 'BPEOF'
-          {
-            "app": {
-              "signingConfigs": [
-                {
-                  "name": "default",
-                  "type": "HarmonyOS",
-                  "material": {
-                    "certpath": "signing/md3music.pem",
-                    "storePassword": "md3music_signing_password_20240101",
-                    "keyAlias": "md3music-key",
-                    "keyPassword": "md3music_signing_password_20240101",
-                    "profile": "signing/md3music.p7b",
-                    "signAlg": "SHA256withECDSA",
-                    "storeFile": "signing/md3music.p12"
-                  }
-                }
-              ],
-              "products": [
-                {
-                  "name": "default",
-                  "signingConfig": "default",
-                  "compatibleSdkVersion": "5.0.0(12)",
-                  "runtimeOS": "HarmonyOS"
-                }
-              ],
-              "buildModeSet": [
-                { "name": "debug" },
-                { "name": "release" }
-              ]
-            },
-            "modules": [
-              {
-                "name": "entry",
-                "srcPath": "./entry",
-                "targets": [
-                  {
-                    "name": "default",
-                    "applyToProducts": ["default"]
-                  }
-                ]
-              }
-            ]
-          }
-          BPEOF
-          echo "[INFO] Updated build-profile.json5 with signing config"
-          cat build-profile.json5
+          SIGN_TOOL=$(find / -name "hap-sign-tool.jar" 2>/dev/null | head -1)
+          UNSIGNED_HAP=$(find . -name '*-unsigned.hap' -type f | head -1)
+          echo "Signing: $UNSIGNED_HAP"
+          java -jar "$SIGN_TOOL" sign-app \
+            -keyAlias "md3music-key" \
+            -signAlg "SHA256withECDSA" \
+            -mode "localSign" \
+            -appCertFile "signing/md3music.pem" \
+            -profileFile "signing/md3music.p7b" \
+            -inFile "$UNSIGNED_HAP" \
+            -keystoreFile "signing/md3music.p12" \
+            -outFile "md3music-signed.hap" \
+            -keyPwd "md3music_signing_password_20240101" \
+            -keystorePwd "md3music_signing_password_20240101"
 
-      - name: Build signed HAP
+      - name: Find and collect signed HAP
         run: |
-          BUILD_MODE="${{ github.event.inputs.build_mode || 'debug' }}"
-          echo "[INFO] Building signed HAP in ${BUILD_MODE} mode..."
-          hvigorw assembleHap \
-            -p product=default \
-            -p buildMode=${BUILD_MODE} \
-            --no-daemon
-
-      - name: Find and collect HAP
-        run: |
-          echo "[INFO] Searching for .hap files..."
-          find . -name '*.hap' -type f
-          HAP_FILE=$(find . -name '*.hap' -type f | head -1)
-          if [ -z "$HAP_FILE" ]; then
-            echo "[ERROR] No .hap files found!"
+          echo "[INFO] Searching for signed .hap files..."
+          SIGNED_HAP=$(find . -name '*-signed.hap' -type f 2>/dev/null | head -1)
+          if [ -z "$SIGNED_HAP" ]; then
+            echo "[ERROR] No signed .hap files found!"
+            find . -name '*.hap' -type f
             exit 1
           fi
-          echo "Found HAP: $HAP_FILE"
+          echo "Found signed HAP: $SIGNED_HAP"
           mkdir -p hap-output
-          cp "$HAP_FILE" hap-output/md3music-signed.hap
+          cp "$SIGNED_HAP" hap-output/
 
       - name: Upload HAP artifact
         uses: actions/upload-artifact@v4
