@@ -94,19 +94,6 @@ struct MainPage {
   @Builder
   TabBarItem(title: string, index: number) {
     Column() {
-      if (title === '发现') {
-        Image($r('sys.media.ohos_ic_public_home'))
-          .width(24).height(24)
-          .fillColor(this.currentTab === index ? MD3Colors.Primary : MD3Colors.OnSurfaceVariant)
-      } else if (title === '搜索') {
-        Image($r('sys.media.ohos_ic_public_search'))
-          .width(24).height(24)
-          .fillColor(this.currentTab === index ? MD3Colors.Primary : MD3Colors.OnSurfaceVariant)
-      } else {
-        Image($r('sys.media.ohos_ic_public_contact'))
-          .width(24).height(24)
-          .fillColor(this.currentTab === index ? MD3Colors.Primary : MD3Colors.OnSurfaceVariant)
-      }
       Text(title)
         .fontSize(12)
         .fontColor(this.currentTab === index ? MD3Colors.Primary : MD3Colors.OnSurfaceVariant)
@@ -159,7 +146,7 @@ struct MainPage {
           .onClick(() => this.player.togglePlay())
 
           Button() {
-            Image($r('sys.media.ohos_ic_public_forward'))
+            Image($r('sys.media.ohos_ic_public_skip_next'))
               .width(32).height(32)
               .fillColor(MD3Colors.OnSurface)
           }
@@ -199,19 +186,6 @@ struct MainPage {
   @Builder
   BottomTab(title: string, index: number) {
     Column() {
-      if (title === '发现') {
-        Image($r('sys.media.ohos_ic_public_home'))
-          .width(24).height(24)
-          .fillColor(this.currentTab === index ? MD3Colors.Primary : MD3Colors.OnSurfaceVariant)
-      } else if (title === '搜索') {
-        Image($r('sys.media.ohos_ic_public_search'))
-          .width(24).height(24)
-          .fillColor(this.currentTab === index ? MD3Colors.Primary : MD3Colors.OnSurfaceVariant)
-      } else {
-        Image($r('sys.media.ohos_ic_public_contact'))
-          .width(24).height(24)
-          .fillColor(this.currentTab === index ? MD3Colors.Primary : MD3Colors.OnSurfaceVariant)
-      }
       Text(title)
         .fontSize(12)
         .fontColor(this.currentTab === index ? MD3Colors.Primary : MD3Colors.OnSurfaceVariant)
@@ -336,14 +310,14 @@ struct MainPage {
     Column() {
       // 搜索栏
       Row({ space: 12 }) {
-        SearchBar({ placeholder: '搜索歌曲、歌手、专辑' })
+        Search({ placeholder: '搜索歌曲、歌手、专辑' })
           .width('100%')
           .height(40)
-          .textStyle({ color: MD3Colors.OnSurface })
+          .fontColor(MD3Colors.OnSurface)
           .placeholderColor(MD3Colors.OnSurfaceVariant)
           .backgroundColor(MD3Colors.SurfaceContainer)
           .borderRadius(20)
-          .onChange((value) => {
+          .onChange((value: string) => {
             if (value.length > 0) {
               AppStorage.setOrCreate('search_keyword', value)
               router.pushUrl({ url: 'pages/search/SearchPage' })

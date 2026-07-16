@@ -12,12 +12,15 @@
  * 修复: 后台/前台生命周期管理，正确释放播放器资源
  */
 import UIAbility from '@ohos.app.ability.UIAbility'
+import Want from '@ohos.app.ability.Want'
+import AbilityConstant from '@ohos.app.ability.AbilityConstant'
 import window from '@ohos.window'
+import { BusinessError } from '@ohos.base'
 import { AppStorageKeys } from '../common/Constants'
 import { PlayerManager } from '../utils/PlayerManager'
 
 export default class EntryAbility extends UIAbility {
-  async onCreate(want, launchParam): Promise<void> {
+  async onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): Promise<void> {
     console.info('[MD3Music] EntryAbility onCreate')
 
     // 初始化默认AppStorage值
@@ -42,9 +45,9 @@ export default class EntryAbility extends UIAbility {
     }
   }
 
-  onWindowStageCreate(windowStage): void {
+  onWindowStageCreate(windowStage: window.WindowStage): void {
     console.info('[MD3Music] EntryAbility onWindowStageCreate')
-    windowStage.loadContent('pages/MainPage', (err) => {
+    windowStage.loadContent('pages/MainPage', (err: BusinessError) => {
       if (err.code) {
         console.error(`[MD3Music] loadContent failed: ${JSON.stringify(err)}`)
         return

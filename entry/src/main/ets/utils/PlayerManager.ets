@@ -20,7 +20,6 @@
  */
 import media from '@ohos.multimedia.media'
 import audio from '@ohos.multimedia.audio'
-import avSession from '@ohos.multimedia.avSession'
 import backgroundTaskManager from '@ohos.backgroundTaskManager'
 import wantAgent from '@ohos.app.ability.wantAgent'
 import { Song } from '../models/Song'
@@ -31,8 +30,6 @@ import { LyricData, LyricLine } from '../models/UserInfo'
 export class PlayerManager {
   private static instance: PlayerManager
   private avPlayer: media.AVPlayer | null = null
-  private avSession: avSession.AVSession | null = null  // 必须用类成员持有，防止GC回收
-  private isSessionActivated: boolean = false
   private isContinuousTaskRunning: boolean = false
 
   private _currentSong: Song = new Song()
@@ -116,19 +113,16 @@ export class PlayerManager {
           this._isPlaying = true
           this.onPlayingChanged?.(true)
           AppStorage.setOrCreate(AppStorageKeys.IS_PLAYING, true)
-          this.updateSessionPlaybackState(avSession.PlaybackState.PLAYBACK_STATE_PLAY)
           break
         case 'paused':
           this._isPlaying = false
           this.onPlayingChanged?.(false)
           AppStorage.setOrCreate(AppStorageKeys.IS_PLAYING, false)
-          this.updateSessionPlaybackState(avSession.PlaybackState.PLAYBACK_STATE_PAUSE)
           break
         case 'completed':
           this._isPlaying = false
           this.onPlayingChanged?.(false)
           AppStorage.setOrCreate(AppStorageKeys.IS_PLAYING, false)
-          this.updateSessionPlaybackState(avSession.PlaybackState.PLAYBACK_STATE_COMPLETED)
           this.handlePlayCompleted()
           break
         case 'stopped':
@@ -163,12 +157,6 @@ export class PlayerManager {
       this._currentPosition = time / 1000  // 转为秒
       this.onPositionChanged?.(this._currentPosition)
       this.updateLyricIndex()
-      // 同步到AVSession进度
-      if (this.avSession) {
-        this.avSession.setAVPlaybackState({
-          position: { elapsedTime: time, updateTime: new Date().getTime() }
-        }).catch(() => {})
-      }
     })
 
     // 4. 时长更新
@@ -243,20 +231,13 @@ export class PlayerManager {
       // 5. 设置新URL，触发 initialized → prepared → playing
       this.avPlayer!.url = playUrl
 
-      // 6. 初始化AVSession（如果还没有）
-      if (!this.isSessionActivated) {
-        await this.initAVSession()
-      }
-      // 更新元数据到通知栏
-      this.updateSessionMetadata(song)
-
-      // 7. 获取歌词（异步）
+      // 6. 获取歌词（异步）
       this.fetchLyric(song)
 
-      // 8. 预取后续歌曲URL
+      // 7. 预取后续歌曲URL
       this.prefetchNextSongs()
 
-      // 9. 启动后台播放长时任务
+      // 8. 启动后台播放长时任务
       await this.startContinuousTask()
 
       this._isUrlLoading = false
@@ -327,8 +308,6 @@ export class PlayerManager {
   setPlayMode(mode: PlayMode): void {
     this._playMode = mode
     AppStorage.setOrCreate(AppStorageKeys.PLAY_MODE, mode)
-    // 同步到AVSession
-    this.updateSessionLoopMode(mode)
   }
 
   togglePlayMode(): PlayMode {
@@ -336,7 +315,6 @@ export class PlayerManager {
     const idx = modes.indexOf(this._playMode)
     this._playMode = modes[(idx + 1) % modes.length]
     AppStorage.setOrCreate(AppStorageKeys.PLAY_MODE, this._playMode)
-    this.updateSessionLoopMode(this._playMode)
     return this._playMode
   }
 
@@ -360,108 +338,6 @@ export class PlayerManager {
         this.stopContinuousTask()
       }
     }
-  }
-
-  // ==================== AVSession 媒体会话 ====================
-
-  /**
-   * 初始化 AVSession
-   * 新增: 系统通知栏/锁屏自动展示媒体控制
-   * 参考: 鸿蒙官方 AVSessionKit 接入指南
-   */
-  private async initAVSession(): Promise<void> {
-    try {
-      const context = getContext(this)
-      this.avSession = await avSession.createAVSession(context, 'MD3Music', 'audio')
-
-      // 注册控制命令（通知栏/锁屏按钮响应）
-      this.avSession.on('play', () => {
-        console.info('[AVSession] play command')
-        this.avPlayer?.play()
-      })
-      this.avSession.on('pause', () => {
-        console.info('[AVSession] pause command')
-        this.avPlayer?.pause()
-      })
-      this.avSession.on('playNext', () => {
-        console.info('[AVSession] playNext command')
-        this.next()
-      })
-      this.avSession.on('playPrevious', () => {
-        console.info('[AVSession] playPrevious command')
-        this.previous()
-      })
-      this.avSession.on('seek', (time: number) => {
-        console.info(`[AVSession] seek to ${time}`)
-        this.seek(time / 1000)
-      })
-      this.avSession.on('setLoopMode', (mode: avSession.LoopMode) => {
-        console.info(`[AVSession] setLoopMode: ${mode}`)
-        if (mode === avSession.LoopMode.LOOP_MODE_SINGLE) {
-          this.setPlayMode(PlayMode.SINGLE)
-        } else if (mode === avSession.LoopMode.LOOP_MODE_SHUFFLE) {
-          this.setPlayMode(PlayMode.SHUFFLE)
-        } else {
-          this.setPlayMode(PlayMode.LOOP)
-        }
-      })
-
-      // 激活会话（必须在元数据和命令注册后）
-      await this.avSession.activate()
-      this.isSessionActivated = true
-      console.info('[AVSession] activated successfully')
-    } catch (err) {
-      console.error('[AVSession] init failed:', err)
-    }
-  }
-
-  /**
-   * 更新通知栏元数据
-   */
-  private updateSessionMetadata(song: Song): void {
-    if (!this.avSession) return
-    const metadata: avSession.AVMetadata = {
-      assetId: song.id || song.hash,
-      title: song.title || '未知歌曲',
-      artist: song.artist || '未知艺术家',
-      album: song.album || '',
-      mediaImage: song.artworkUri || '',
-      duration: this._duration * 1000,  // 毫秒
-      lyric: this._lyricData.rawLrc || '',  // LRC格式歌词
-    }
-    this.avSession.setAVMetadata(metadata).catch((err: Error) => {
-      console.warn('[AVSession] setAVMetadata failed:', err)
-    })
-  }
-
-  /**
-   * 更新通知栏播放状态
-   */
-  private updateSessionPlaybackState(state: avSession.PlaybackState): void {
-    if (!this.avSession) return
-    const playbackState: avSession.AVPlaybackState = {
-      state: state,
-      position: { elapsedTime: this._currentPosition * 1000, updateTime: new Date().getTime() },
-      speed: 1.0,
-      bufferedTime: 0,
-    }
-    this.avSession.setAVPlaybackState(playbackState).catch((err: Error) => {
-      console.warn('[AVSession] setAVPlaybackState failed:', err)
-    })
-  }
-
-  /**
-   * 更新循环模式到通知栏
-   */
-  private updateSessionLoopMode(mode: PlayMode): void {
-    if (!this.avSession) return
-    let loopMode: avSession.LoopMode
-    switch (mode) {
-      case PlayMode.SINGLE: loopMode = avSession.LoopMode.LOOP_MODE_SINGLE; break
-      case PlayMode.SHUFFLE: loopMode = avSession.LoopMode.LOOP_MODE_SHUFFLE; break
-      default: loopMode = avSession.LoopMode.LOOP_MODE_LIST; break
-    }
-    this.avSession.setAVPlaybackState({ loopMode: loopMode }).catch(() => {})
   }
 
   // ==================== 后台播放长时任务 ====================
@@ -492,9 +368,6 @@ export class PlayerManager {
         agent
       )
       this.isContinuousTaskRunning = true
-
-      // 让 AVSession 也能通过通知拉起应用
-      this.avSession?.setLaunchAbility(agent)
       console.info('[BackgroundTask] continuous task started')
     } catch (err) {
       console.warn('[BackgroundTask] start failed:', err)
@@ -537,10 +410,6 @@ export class PlayerManager {
         if (content) {
           this._lyricData = this.parseLrc(content)
           this._currentLyricIndex = 0
-          // 更新AVSession歌词
-          if (this.avSession) {
-            this.updateSessionMetadata(song)
-          }
         }
       }
     } catch (err) {
@@ -603,7 +472,7 @@ export class PlayerManager {
       const song = this._playList[idx]
       if (song && !song.url) {
         api.getSongUrl(song.hash, song.albumId, song.albumAudioId)
-          .then((result) => {
+          .then((result: Record<string, Object>) => {
             song.url = Song.extractPlayUrl(result)
           })
           .catch(() => {})
@@ -620,16 +489,10 @@ export class PlayerManager {
 
   /**
    * 释放资源
-   * 修复: 正确释放 AVPlayer 和 AVSession
+   * 修复: 正确释放 AVPlayer
    */
   async release(): Promise<void> {
     await this.stopContinuousTask()
-    if (this.avSession) {
-      await this.avSession.deactivate().catch(() => {})
-      await this.avSession.destroy().catch(() => {})
-      this.avSession = null
-      this.isSessionActivated = false
-    }
     if (this.avPlayer) {
       this.avPlayer.release()
       this.avPlayer = null

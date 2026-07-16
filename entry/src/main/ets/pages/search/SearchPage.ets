@@ -128,14 +128,14 @@ struct SearchPage {
         .backgroundColor(Color.Transparent)
         .onClick(() => router.back())
 
-        SearchBar({ placeholder: '搜索歌曲、歌手、专辑', value: this.keyword })
+        Search({ value: this.keyword, placeholder: '搜索歌曲、歌手、专辑' })
           .width('100%')
           .height(40)
-          .textStyle({ color: MD3Colors.OnSurface })
+          .fontColor(MD3Colors.OnSurface)
           .placeholderColor(MD3Colors.OnSurfaceVariant)
           .backgroundColor(MD3Colors.SurfaceContainer)
           .borderRadius(20)
-          .onChange((value) => { this.keyword = value })
+          .onChange((value: string) => { this.keyword = value })
           .onSubmit(() => this.doSearch())
       }
       .width('100%')

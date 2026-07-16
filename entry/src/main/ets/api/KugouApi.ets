@@ -125,7 +125,7 @@ export class KugouApi {
    * 通用 POST 请求
    * 修复: 响应码检查、重试机制
    */
-  private async post<T>(path: string, data?: Record<string, Object>, retryCount: number = 0): Promise<T> {
+  private async post<T>(path: string, data?: Record<string, string>, retryCount: number = 0): Promise<T> {
     const baseUrl = this.getBaseUrl(path)
     const url = `${baseUrl}${path}`
 
@@ -168,19 +168,23 @@ export class KugouApi {
   }
 
   async getQrCreate(key: string, qrimg: boolean = true): Promise<Record<string, Object>> {
-    return this.get('/login/qr/create', { key, qrimg: String(qrimg) })
+    const params: Record<string, string> = { 'key': key, 'qrimg': String(qrimg) }
+    return this.get('/login/qr/create', params)
   }
 
   async checkQrCode(key: string): Promise<Record<string, Object>> {
-    return this.get('/login/qr/check', { key })
+    const params: Record<string, string> = { 'key': key }
+    return this.get('/login/qr/check', params)
   }
 
   async sendCaptcha(mobile: string): Promise<Record<string, Object>> {
-    return this.post('/captcha/sent', { mobile })
+    const data: Record<string, string> = { 'mobile': mobile }
+    return this.post('/captcha/sent', data)
   }
 
   async loginByPhone(mobile: string, code: string): Promise<Record<string, Object>> {
-    return this.post('/login/cellphone', { mobile, code })
+    const data: Record<string, string> = { 'mobile': mobile, 'code': code }
+    return this.post('/login/cellphone', data)
   }
 
   async getUserDetail(): Promise<Record<string, Object>> {
@@ -198,11 +202,22 @@ export class KugouApi {
   // ==================== 搜索相关 API ====================
 
   async searchSongs(keyword: string, page: number = 1, pageSize: number = 30): Promise<Record<string, Object>> {
-    return this.get('/search', { keyword, keywords: keyword, page: String(page), pagesize: String(pageSize) })
+    const params: Record<string, string> = {
+      'keyword': keyword,
+      'keywords': keyword,
+      'page': String(page),
+      'pagesize': String(pageSize)
+    }
+    return this.get('/search', params)
   }
 
   async searchComplex(keyword: string, page: number = 1, pageSize: number = 30): Promise<Record<string, Object>> {
-    return this.get('/search/complex', { keyword, page: String(page), pagesize: String(pageSize) })
+    const params: Record<string, string> = {
+      'keyword': keyword,
+      'page': String(page),
+      'pagesize': String(pageSize)
+    }
+    return this.get('/search/complex', params)
   }
 
   async getHotSearch(): Promise<Record<string, Object>> {
@@ -212,23 +227,25 @@ export class KugouApi {
   // ==================== 播放相关 API ====================
 
   async getSongUrl(hash: string, albumId: string = '', albumAudioId: string = ''): Promise<Record<string, Object>> {
-    const data: Record<string, Object> = { hash }
+    const data: Record<string, string> = { 'hash': hash }
     if (albumId) data['album_id'] = albumId
     if (albumAudioId) data['album_audio_id'] = albumAudioId
     return this.post('/audio', data)
   }
 
   async getPrivilege(hash: string, albumId: string = ''): Promise<Record<string, Object>> {
-    return this.post('/privilege/lite', { hash, album_id: albumId })
+    const data: Record<string, string> = { 'hash': hash, 'album_id': albumId }
+    return this.post('/privilege/lite', data)
   }
 
   async getLyric(id: number, accesskey: string): Promise<Record<string, Object>> {
-    return this.get('/lyric', {
-      id: String(id),
-      accesskey,
-      decode: '1',
-      fmt: 'lrc',
-    })
+    const params: Record<string, string> = {
+      'id': String(id),
+      'accesskey': accesskey,
+      'decode': '1',
+      'fmt': 'lrc'
+    }
+    return this.get('/lyric', params)
   }
 
   // ==================== 排行榜/推荐 API ====================
@@ -238,7 +255,12 @@ export class KugouApi {
   }
 
   async getRankSongs(rankId: string, page: number = 1): Promise<Record<string, Object>> {
-    return this.get('/rank/audio', { rankid: rankId, page: String(page), pagesize: '30' })
+    const params: Record<string, string> = {
+      'rankid': rankId,
+      'page': String(page),
+      'pagesize': '30'
+    }
+    return this.get('/rank/audio', params)
   }
 
   async getDailyRecommend(): Promise<Record<string, Object>> {
@@ -246,11 +268,17 @@ export class KugouApi {
   }
 
   async getPlaylistDetail(id: string): Promise<Record<string, Object>> {
-    return this.get('/playlist/detail', { id })
+    const params: Record<string, string> = { 'id': id }
+    return this.get('/playlist/detail', params)
   }
 
   async getPlaylistTracks(id: string, page: number = 1): Promise<Record<string, Object>> {
-    return this.get('/playlist/track/all', { id, page: String(page), pagesize: '30' })
+    const params: Record<string, string> = {
+      'id': id,
+      'page': String(page),
+      'pagesize': '30'
+    }
+    return this.get('/playlist/track/all', params)
   }
 
   // ==================== 用户歌单 API ====================
