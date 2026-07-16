@@ -20,9 +20,19 @@ java -jar "$SIGN_TOOL" generate-keypair \
   -keyPwd "123456" \
   -keystorePwd "123456"
 
-# 步骤2: 生成 CA 证书
+# 步骤2: 生成 CA 证书 (需要先为CA生成密钥对)
+java -jar "$SIGN_TOOL" generate-keypair \
+  -keyAlias "md3music-ca" \
+  -keyAlg "ECC" \
+  -keySize "NIST-P-256" \
+  -keystoreFile "signing/md3music.p12" \
+  -keyPwd "123456" \
+  -keystorePwd "123456"
+
 java -jar "$SIGN_TOOL" generate-ca \
   -keyAlias "md3music-ca" \
+  -keyAlg "ECC" \
+  -keySize "NIST-P-256" \
   -signAlg "SHA256withECDSA" \
   -subject "C=CN,O=MD3Music,OU=Dev,CN=MD3Music CA" \
   -keystoreFile "signing/md3music.p12" \
@@ -48,7 +58,15 @@ java -jar "$SIGN_TOOL" generate-app-cert \
   -issuerKeyPwd "123456" \
   -validity "3650"
 
-# 步骤4: 生成 Profile 签名证书
+# 步骤4: 生成 Profile 签名证书 (需要先为profile生成密钥对)
+java -jar "$SIGN_TOOL" generate-keypair \
+  -keyAlias "md3music-profile-key" \
+  -keyAlg "ECC" \
+  -keySize "NIST-P-256" \
+  -keystoreFile "signing/md3music.p12" \
+  -keyPwd "123456" \
+  -keystorePwd "123456"
+
 java -jar "$SIGN_TOOL" generate-profile-cert \
   -keyAlias "md3music-profile-key" \
   -signAlg "SHA256withECDSA" \
