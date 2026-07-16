@@ -12,6 +12,7 @@ on:
     paths:
       - 'entry/**'
       - 'hvigor/**'
+      - 'scripts/**'
       - 'build-profile.json5'
       - 'oh-package.json5'
       - 'hvigorfile.ts'
