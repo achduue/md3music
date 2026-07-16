@@ -90,14 +90,10 @@ cat > signing/profile-template.json << 'EOF'
   "app-name": "md3music",
   "app-type": "release",
   "bundle-name": "com.md3music.harmonyos",
-  "development-time": "2026-01-01 00:00:00",
+  "development-time": "2026-01-01",
   "distribution-type": "os_shared",
   "app-distribution-type": "app_gallery",
-  "uuid": "00000000-0000-0000-0000-000000000000",
-  "validity": {
-    "not-before": "2026-01-01 00:00:00",
-    "not-after": "2036-01-01 00:00:00"
-  },
+  "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "type": "release",
   "app-feature": "hos_app"
 }
