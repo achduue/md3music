@@ -82,8 +82,8 @@ export class KugouApi {
     let url = `${baseUrl}${path}`
     if (params) {
       const query = Object.entries(params)
-        .filter(([, v]) => v !== undefined && v !== '')
-        .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+        .filter((entry: [string, string]) => entry[1] !== undefined && entry[1] !== '')
+        .map((entry: [string, string]) => `${encodeURIComponent(entry[0])}=${encodeURIComponent(entry[1])}`)
         .join('&')
       if (query) url += `?${query}`
     }
@@ -112,10 +112,10 @@ export class KugouApi {
       // 重试逻辑
       if (retryCount < MAX_RETRY) {
         console.warn(`[API] GET ${path} failed (attempt ${retryCount + 1}), retrying...`)
-        await new Promise(resolve => setTimeout(resolve, 500 * (retryCount + 1)))
+        await new Promise<void>((resolve: () => void) => setTimeout(resolve, 500 * (retryCount + 1)))
         return this.get<T>(path, params, retryCount + 1)
       }
-      throw err
+      throw new Error(`GET ${path} failed: ${(err as Error).message}`)
     } finally {
       httpRequest.destroy()
     }
@@ -152,10 +152,10 @@ export class KugouApi {
     } catch (err) {
       if (retryCount < MAX_RETRY) {
         console.warn(`[API] POST ${path} failed (attempt ${retryCount + 1}), retrying...`)
-        await new Promise(resolve => setTimeout(resolve, 500 * (retryCount + 1)))
+        await new Promise<void>((resolve: () => void) => setTimeout(resolve, 500 * (retryCount + 1)))
         return this.post<T>(path, data, retryCount + 1)
       }
-      throw err
+      throw new Error(`POST ${path} failed: ${(err as Error).message}`)
     } finally {
       httpRequest.destroy()
     }

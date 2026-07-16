@@ -105,7 +105,7 @@ export class Song {
     const info = dataObj['info']
     if (info) {
       if (Array.isArray(info)) {
-        for (const item of info) {
+        for (const item of info as Object[]) {
           const itemObj = item as Record<string, Object>
           const url = (itemObj['url'] as string) || (itemObj['play_url'] as string) || ''
           if (url) return url
@@ -118,7 +118,7 @@ export class Song {
 
     // 格式3: { data: [{ url: "https://..." }] }
     if (Array.isArray(data)) {
-      for (const item of data) {
+      for (const item of data as Object[]) {
         const itemObj = item as Record<string, Object>
         const url = (itemObj['url'] as string) || ''
         if (url) return url
@@ -128,7 +128,7 @@ export class Song {
     // 格式4: { data: { url_info: [{ url: "https://..." }] } }
     const urlInfo = dataObj['url_info']
     if (urlInfo && Array.isArray(urlInfo)) {
-      for (const item of urlInfo) {
+      for (const item of urlInfo as Object[]) {
         const itemObj = item as Record<string, Object>
         const url = (itemObj['url'] as string) || ''
         if (url) return url

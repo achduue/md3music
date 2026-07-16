@@ -216,8 +216,8 @@ struct PlayerPage {
 
           // 上一曲
           Button() {
-            Image($r('sys.media.ohos_ic_public_skip_previous'))
-              .width(36).height(36).fillColor('#FFFFFFFF')
+            Text('◀◀')
+              .fontSize(18).fontColor('#FFFFFFFF')
           }
           .type(ButtonType.Circle)
           .backgroundColor(Color.Transparent)
@@ -236,8 +236,8 @@ struct PlayerPage {
 
           // 下一曲
           Button() {
-            Image($r('sys.media.ohos_ic_public_skip_next'))
-              .width(36).height(36).fillColor('#FFFFFFFF')
+            Text('▶▶')
+              .fontSize(18).fontColor('#FFFFFFFF')
           }
           .type(ButtonType.Circle)
           .backgroundColor(Color.Transparent)

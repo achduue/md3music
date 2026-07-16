@@ -176,12 +176,12 @@ struct SearchPage {
         // 播放全部按钮
         Row() {
           Button() {
-            Image($r('sys.media.ohos_ic_public_play'))
-              .width(18).height(18).fillColor(MD3Colors.Primary)
-            Text(` 播放全部 (${this.songs.length})`)
-              .fontSize(14)
-              .fontWeight(FontWeight.Medium)
-              .fontColor(MD3Colors.Primary)
+            Row() {
+              Text(`▶ 播放全部 (${this.songs.length})`)
+                .fontSize(14)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(MD3Colors.Primary)
+            }
           }
           .type(ButtonType.Capsule)
           .backgroundColor(MD3Colors.PrimaryContainer)

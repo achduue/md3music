@@ -146,9 +146,9 @@ struct MainPage {
           .onClick(() => this.player.togglePlay())
 
           Button() {
-            Image($r('sys.media.ohos_ic_public_skip_next'))
-              .width(32).height(32)
-              .fillColor(MD3Colors.OnSurface)
+            Text('▶▶')
+              .fontSize(16)
+              .fontColor(MD3Colors.OnSurface)
           }
           .type(ButtonType.Circle)
           .backgroundColor(Color.Transparent)
