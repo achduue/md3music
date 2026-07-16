@@ -1,15 +1,5 @@
 /**
- * ============================================================
- * 声明：本文件由 AI（TRAE 助手）辅助生成，尚未经过技术验证。
- * 代码未在真实 HarmonyOS 设备上编译运行，可能存在编译错误、
- * API 调用不正确等问题，请自行审查测试后使用。
- * 原始项目: https://github.com/zzyoxml/md3Music (Flutter/Android)
- * ============================================================
- */
-
-/**
  * 全屏播放器页面
- * 对应原Flutter: PlayerPage (modules/player/player_page.dart)
  *
  * 功能: 封面展示、进度条拖动、播放控制、歌词同步滚动
  * 播放流程: PlayerManager.playOnlineSong() → API获取URL → AVPlayer播放
@@ -17,7 +7,7 @@
 import router from '@ohos.router'
 import { PlayerManager } from '../../utils/PlayerManager'
 import { Song } from '../../models/Song'
-import { MD3Colors, AppStorageKeys, PlayMode } from '../../common/Constants'
+import { MD3Colors, PlayMode } from '../../common/Constants'
 import { ImageUtils } from '../../utils/LocalStorage'
 
 @Entry
@@ -83,8 +73,9 @@ struct PlayerPage {
       // 顶部导航
       Row() {
         Button() {
-          Image($r('sys.media.ohos_ic_public_arrow_left'))
-            .width(24).height(24).fillColor('#FFFFFFFF')
+          Text('◀')
+            .fontSize(20)
+            .fontColor('#FFFFFFFF')
         }
         .type(ButtonType.Circle)
         .backgroundColor(Color.Transparent)
@@ -225,8 +216,9 @@ struct PlayerPage {
 
           // 播放/暂停
           Button() {
-            Image(this.isPlaying ? $r('sys.media.ohos_ic_public_pause') : $r('sys.media.ohos_ic_public_play'))
-              .width(56).height(56).fillColor('#FF6750A4')
+            Text(this.isPlaying ? '⏸' : '▶')
+              .fontSize(32)
+              .fontColor('#FF6750A4')
           }
           .type(ButtonType.Circle)
           .width(64).height(64)

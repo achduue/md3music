@@ -1,17 +1,7 @@
 /**
- * ============================================================
- * 声明：本文件由 AI（TRAE 助手）辅助生成，尚未经过技术验证。
- * 代码未在真实 HarmonyOS 设备上编译运行，可能存在编译错误、
- * API 调用不正确等问题，请自行审查测试后使用。
- * 原始项目: https://github.com/zzyoxml/md3Music (Flutter/Android)
- * ============================================================
- */
-
-/**
  * 登录页面 - 支持二维码登录和手机验证码登录
- * 对应原Flutter: LoginPage (modules/user/login_page.dart)
  *
- * 二维码登录流程(对应原版):
+ * 二维码登录流程:
  * 1. GET /login/qr/key → 获取key
  * 2. GET /login/qr/create?key=xxx → 获取base64二维码图片
  * 3. Timer轮询 GET /login/qr/check?key=xxx → status=4成功
@@ -62,7 +52,6 @@ struct LoginPage {
 
   /**
    * 生成二维码
-   * 对应原Flutter: LoginPage.generateQrCode()
    * 步骤1: GET /login/qr/key → 获取key
    * 步骤2: GET /login/qr/create?key=xxx&qrimg=1 → base64图片
    */
@@ -96,7 +85,6 @@ struct LoginPage {
       this.isQrLoading = false
 
       // Step 3: 开始轮询扫码状态（每2秒）
-      // 对应原Flutter: Timer.periodic(2秒)
       this.checkTimer = setInterval(() => this.checkQrStatus(), 2000)
 
       // 二维码5分钟后过期
@@ -114,7 +102,6 @@ struct LoginPage {
 
   /**
    * 检查二维码扫码状态
-   * 对应原Flutter: LoginPage.checkQrCode()
    * GET /login/qr/check?key=xxx
    * status: 0=等待, 1=已扫码, 2/800=过期, 4=确认成功
    */
@@ -163,7 +150,6 @@ struct LoginPage {
 
   /**
    * 发送验证码
-   * 对应原Flutter: KugouProvider.sendLoginCaptcha(phone)
    * POST /captcha/sent { mobile }
    */
   async sendVerifyCode(): Promise<void> {
@@ -199,7 +185,6 @@ struct LoginPage {
 
   /**
    * 手机验证码登录
-   * 对应原Flutter: KugouProvider.loginByPhone(phone, code)
    * POST /login/cellphone { mobile, code }
    * 内部由云端处理AES/RSA加密
    */
@@ -241,7 +226,6 @@ struct LoginPage {
 
   /**
    * 保存登录信息
-   * 对应原Flutter: KugouApiClient.setLoginCookies()
    * 保存到 AppStorage (对应SharedPreferences)
    */
   private saveLoginInfo(token: string, userid: string, vipToken: string, vipType: number): void {
@@ -260,7 +244,6 @@ struct LoginPage {
 
   /**
    * 获取用户信息
-   * 对应原Flutter: KugouProvider.refreshUserInfo()
    * POST /user/detail
    */
   private async fetchUserInfo(userid: string, token: string): Promise<void> {
@@ -284,8 +267,9 @@ struct LoginPage {
       // 顶部导航栏
       Row() {
         Button() {
-          Image($r('sys.media.ohos_ic_public_arrow_left'))
-            .width(24).height(24).fillColor(MD3Colors.OnSurface)
+          Text('◀')
+            .fontSize(20)
+            .fontColor(MD3Colors.OnSurface)
         }
         .type(ButtonType.Circle)
         .backgroundColor(Color.Transparent)

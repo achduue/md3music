@@ -2,9 +2,9 @@
   "src": [
     "pages/MainPage",
     "pages/login/LoginPage",
-    "pages/player/PlayerPage",
     "pages/search/SearchPage",
     "pages/discover/DiscoverPage",
+    "pages/player/PlayerPage",
     "pages/settings/SettingsPage"
   ]
 }

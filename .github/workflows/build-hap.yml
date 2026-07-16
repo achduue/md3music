@@ -80,34 +80,50 @@ jobs:
           echo "[INFO] Cleaning hvigor project cache..."
           rm -rf /github/home/.hvigor/project_caches || true
 
-      - name: List available hvigor tasks
-        run: |
-          echo "[INFO] Available hvigor tasks:"
-          hvigorw tasks --no-daemon
-
-      - name: Build HAP
+      - name: Build unsigned HAP
         run: |
           BUILD_MODE="${{ github.event.inputs.build_mode || 'debug' }}"
-          echo "[INFO] Building HAP in ${BUILD_MODE} mode..."
+          echo "[INFO] Building unsigned HAP in ${BUILD_MODE} mode..."
           hvigorw assembleHap \
             --mode module \
             -p product=default \
             -p buildMode=${BUILD_MODE} \
             --no-daemon
 
-      - name: Find and collect HAP files
+      - name: Generate signing materials
         run: |
-          echo "[INFO] Searching for built .hap files..."
-          HAP_FILES=$(find . -name '*.hap' -type f 2>/dev/null)
-          if [ -z "$HAP_FILES" ]; then
-            echo "[ERROR] No .hap files found!"
-            find . -path '*/build/*' -type f | head -20
+          chmod +x scripts/generate-signing-materials.sh
+          bash scripts/generate-signing-materials.sh
+
+      - name: Sign HAP
+        run: |
+          SIGN_TOOL=$(find / -name "hap-sign-tool.jar" 2>/dev/null | head -1)
+          UNSIGNED_HAP=$(find . -name '*-unsigned.hap' -type f | head -1)
+          echo "Signing: $UNSIGNED_HAP"
+          java -jar "$SIGN_TOOL" sign-app \
+            -keyAlias "md3music-key" \
+            -signAlg "SHA256withECDSA" \
+            -mode "localSign" \
+            -appCertFile "signing/md3music.pem" \
+            -profileFile "signing/md3music.p7b" \
+            -inFile "$UNSIGNED_HAP" \
+            -keystoreFile "signing/md3music.p12" \
+            -outFile "md3music-signed.hap" \
+            -keyPwd "123456" \
+            -keystorePwd "123456"
+
+      - name: Find and collect signed HAP
+        run: |
+          echo "[INFO] Searching for signed .hap files..."
+          SIGNED_HAP=$(find . -name '*-signed.hap' -type f 2>/dev/null | head -1)
+          if [ -z "$SIGNED_HAP" ]; then
+            echo "[ERROR] No signed .hap files found!"
+            find . -name '*.hap' -type f
             exit 1
           fi
-          echo "Found HAP files:"
-          echo "$HAP_FILES"
+          echo "Found signed HAP: $SIGNED_HAP"
           mkdir -p hap-output
-          find . -name '*.hap' -type f -exec cp {} hap-output/ \;
+          cp "$SIGNED_HAP" hap-output/
 
       - name: Upload HAP artifact
         uses: actions/upload-artifact@v4

@@ -1,15 +1,5 @@
 /**
- * ============================================================
- * 声明：本文件由 AI（TRAE 助手）辅助生成，尚未经过技术验证。
- * 代码未在真实 HarmonyOS 设备上编译运行，可能存在编译错误、
- * API 调用不正确等问题，请自行审查测试后使用。
- * 原始项目: https://github.com/zzyoxml/md3Music (Flutter/Android)
- * ============================================================
- */
-
-/**
  * 搜索结果页面
- * 对应原Flutter: SearchPage (modules/search/search_page.dart)
  *
  * 搜索流程:
  * 1. GET /search?keyword=xxx → 云端 → songsearch.kugou.com/song_search_v2
@@ -20,7 +10,7 @@ import router from '@ohos.router'
 import { KugouApi } from '../../api/KugouApi'
 import { Song } from '../../models/Song'
 import { PlayerManager } from '../../utils/PlayerManager'
-import { MD3Colors, AppStorageKeys } from '../../common/Constants'
+import { MD3Colors } from '../../common/Constants'
 import { ImageUtils } from '../../utils/LocalStorage'
 
 @Entry
@@ -43,7 +33,6 @@ struct SearchPage {
 
   /**
    * 执行搜索
-   * 对应原Flutter: KugouProvider.searchSongs(keyword, page)
    * API: GET /search?keyword=xxx&page=1&pagesize=30
    */
   async doSearch(): Promise<void> {
@@ -64,7 +53,7 @@ struct SearchPage {
         const lists = data['lists'] as Record<string, Object>[] | undefined
         if (lists && lists.length > 0) {
           this.songs = lists.map(item => Song.fromKugouSearch(item))
-          // 过滤无效歌曲（对应原Flutter：过滤标题为空/"-"、时长为0的无效歌曲）
+          // 过滤无效歌曲（标题为空/"-"、时长为0的无效歌曲）
           this.songs = this.songs.filter(s =>
             s.title && s.title !== '' && s.title !== '-' && s.duration > 0
           )
@@ -108,7 +97,6 @@ struct SearchPage {
 
   /**
    * 播放歌曲
-   * 对应原Flutter: KugouProvider.playSong(context, song, list, index)
    * → PlayerProvider.playOnlinePlaylist(songs, startIndex)
    */
   playSong(index: number): void {
@@ -121,8 +109,9 @@ struct SearchPage {
       // 搜索栏
       Row({ space: 12 }) {
         Button() {
-          Image($r('sys.media.ohos_ic_public_arrow_left'))
-            .width(24).height(24).fillColor(MD3Colors.OnSurface)
+          Text('◀')
+            .fontSize(20)
+            .fontColor(MD3Colors.OnSurface)
         }
         .type(ButtonType.Circle)
         .backgroundColor(Color.Transparent)
@@ -235,8 +224,9 @@ struct SearchPage {
 
                 // 更多
                 Button() {
-                  Image($r('sys.media.ohos_ic_public_more'))
-                    .width(20).height(20).fillColor(MD3Colors.OnSurfaceVariant)
+                  Text('⋯')
+                    .fontSize(20)
+                    .fontColor(MD3Colors.OnSurfaceVariant)
                 }
                 .type(ButtonType.Circle)
                 .backgroundColor(Color.Transparent)

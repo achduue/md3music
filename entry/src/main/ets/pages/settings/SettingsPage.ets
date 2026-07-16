@@ -1,15 +1,5 @@
 /**
- * ============================================================
- * 声明：本文件由 AI（TRAE 助手）辅助生成，尚未经过技术验证。
- * 代码未在真实 HarmonyOS 设备上编译运行，可能存在编译错误、
- * API 调用不正确等问题，请自行审查测试后使用。
- * 原始项目: https://github.com/zzyoxml/md3Music (Flutter/Android)
- * ============================================================
- */
-
-/**
  * 设置页面
- * 对应原Flutter: SettingsPage (modules/settings/)
  */
 import router from '@ohos.router'
 import { AppStorageKeys, MD3Colors, AudioQuality, PlayMode } from '../../common/Constants'
@@ -28,8 +18,9 @@ struct SettingsPage {
       // 顶部导航
       Row() {
         Button() {
-          Image($r('sys.media.ohos_ic_public_arrow_left'))
-            .width(24).height(24).fillColor(MD3Colors.OnSurface)
+          Text('◀')
+            .fontSize(20)
+            .fontColor(MD3Colors.OnSurface)
         }
         .type(ButtonType.Circle)
         .backgroundColor(Color.Transparent)

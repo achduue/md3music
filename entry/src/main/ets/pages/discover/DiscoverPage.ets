@@ -1,15 +1,5 @@
 /**
- * ============================================================
- * 声明：本文件由 AI（TRAE 助手）辅助生成，尚未经过技术验证。
- * 代码未在真实 HarmonyOS 设备上编译运行，可能存在编译错误、
- * API 调用不正确等问题，请自行审查测试后使用。
- * 原始项目: https://github.com/zzyoxml/md3Music (Flutter/Android)
- * ============================================================
- */
-
-/**
  * 发现页 - 排行榜/歌单详情
- * 对应原Flutter: DiscoverPage / RankSongsPage
  *
  * 流程:
  * 1. 从AppStorage获取 rank_id
@@ -21,7 +11,7 @@ import router from '@ohos.router'
 import { KugouApi } from '../../api/KugouApi'
 import { Song } from '../../models/Song'
 import { PlayerManager } from '../../utils/PlayerManager'
-import { MD3Colors, AppStorageKeys } from '../../common/Constants'
+import { MD3Colors } from '../../common/Constants'
 import { ImageUtils } from '../../utils/LocalStorage'
 
 @Entry
@@ -42,7 +32,6 @@ struct DiscoverPage {
 
   /**
    * 加载排行榜歌曲
-   * 对应原Flutter: KugouProvider.loadRankSongs(rankId, page)
    * API: GET /rank/audio?rankid=xxx&page=1
    */
   async loadRankSongs(): Promise<void> {
@@ -86,8 +75,9 @@ struct DiscoverPage {
       // 顶部
       Row() {
         Button() {
-          Image($r('sys.media.ohos_ic_public_arrow_left'))
-            .width(24).height(24).fillColor(MD3Colors.OnSurface)
+          Text('◀')
+            .fontSize(20)
+            .fontColor(MD3Colors.OnSurface)
         }
         .type(ButtonType.Circle)
         .backgroundColor(Color.Transparent)

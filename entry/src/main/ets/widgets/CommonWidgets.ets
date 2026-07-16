@@ -1,16 +1,11 @@
 /**
- * ============================================================
- * 声明：本文件由 AI（TRAE 助手）辅助生成，尚未经过技术验证。
- * 代码未在真实 HarmonyOS 设备上编译运行，可能存在编译错误、
- * API 调用不正确等问题，请自行审查测试后使用。
- * 原始项目: https://github.com/zzyoxml/md3Music (Flutter/Android)
- * ============================================================
- */
-
-/**
  * 公共 UI 组件
  * 提供统一的加载、错误提示、空状态等组件
  */
+
+import { Song } from '../models/Song'
+import { PlayerManager } from '../utils/PlayerManager'
+import { ImageUtils } from '../utils/LocalStorage'
 
 @Builder
 export function LoadingState(text: string = '加载中...') {
@@ -114,7 +109,3 @@ export function SongListItem(song: Song, index: number, showRank: boolean = fals
   .borderRadius(12)
   .onClick(() => onPlay(index))
 }
-
-import { Song } from '../models/Song'
-import { PlayerManager } from '../utils/PlayerManager'
-import { ImageUtils } from '../utils/LocalStorage'

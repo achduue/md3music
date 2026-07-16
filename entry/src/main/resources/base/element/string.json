@@ -1,128 +1,36 @@
 {
   "string": [
-    {
-      "name": "module_desc",
-      "value": "MD3Music 鸿蒙版音乐播放器"
-    },
-    {
-      "name": "EntryAbility_desc",
-      "value": "MD3Music 播放器主入口"
-    },
-    {
-      "name": "EntryAbility_label",
-      "value": "MD3Music"
-    },
-    {
-      "name": "tab_discover",
-      "value": "发现"
-    },
-    {
-      "name": "tab_search",
-      "value": "搜索"
-    },
-    {
-      "name": "tab_settings",
-      "value": "设置"
-    },
-    {
-      "name": "login_title",
-      "value": "登录"
-    },
-    {
-      "name": "login_qrcode",
-      "value": "二维码登录"
-    },
-    {
-      "name": "login_phone",
-      "value": "手机号登录"
-    },
-    {
-      "name": "login_send_code",
-      "value": "发送验证码"
-    },
-    {
-      "name": "login_confirm",
-      "value": "登录"
-    },
-    {
-      "name": "search_hint",
-      "value": "搜索歌曲、歌手、专辑"
-    },
-    {
-      "name": "player_previous",
-      "value": "上一曲"
-    },
-    {
-      "name": "player_next",
-      "value": "下一曲"
-    },
-    {
-      "name": "quality_standard",
-      "value": "标准"
-    },
-    {
-      "name": "quality_high",
-      "value": "高质"
-    },
-    {
-      "name": "quality_lossless",
-      "value": "无损"
-    },
-    {
-      "name": "settings_title",
-      "value": "设置"
-    },
-    {
-      "name": "settings_quality",
-      "value": "音质设置"
-    },
-    {
-      "name": "settings_logout",
-      "value": "退出登录"
-    },
-    {
-      "name": "settings_version",
-      "value": "版本"
-    },
-    {
-      "name": "settings_cache",
-      "value": "清除缓存"
-    },
-    {
-      "name": "not_logged_in",
-      "value": "未登录"
-    },
-    {
-      "name": "click_to_login",
-      "value": "点击登录"
-    },
-    {
-      "name": "loading",
-      "value": "加载中..."
-    },
-    {
-      "name": "retry",
-      "value": "重试"
-    },
-    {
-      "name": "no_results",
-      "value": "暂无结果"
-    },
-    {
-      "name": "hot_search",
-      "value": "热搜"
-    },
-    {
-      "name": "recommend",
-      "value": "每日推荐"
-    },
-    {
-      "name": "rank_list",
-      "value": "排行榜"
-    },
-    {
-      "name": "play_all",
-      "value": "播放全部"
-    }
+    { "name": "module_desc", "value": "MD3Music 鸿蒙版" },
+    { "name": "EntryAbility_desc", "value": "MD3Music" },
+    { "name": "EntryAbility_label", "value": "MD3Music" },
+    { "name": "app_name", "value": "MD3Music" },
+    { "name": "tab_discover", "value": "发现" },
+    { "name": "tab_search", "value": "搜索" },
+    { "name": "tab_settings", "value": "设置" },
+    { "name": "login_title", "value": "登录" },
+    { "name": "login_qrcode", "value": "二维码登录" },
+    { "name": "login_phone", "value": "手机号登录" },
+    { "name": "login_send_code", "value": "发送验证码" },
+    { "name": "login_confirm", "value": "登录" },
+    { "name": "search_hint", "value": "搜索歌曲、歌手、专辑" },
+    { "name": "player_previous", "value": "上一曲" },
+    { "name": "player_next", "value": "下一曲" },
+    { "name": "quality_standard", "value": "标准" },
+    { "name": "quality_high", "value": "高质" },
+    { "name": "quality_lossless", "value": "无损" },
+    { "name": "settings_title", "value": "设置" },
+    { "name": "settings_quality", "value": "音质设置" },
+    { "name": "settings_logout", "value": "退出登录" },
+    { "name": "settings_version", "value": "版本" },
+    { "name": "settings_cache", "value": "清除缓存" },
+    { "name": "not_logged_in", "value": "未登录" },
+    { "name": "click_to_login", "value": "点击登录" },
+    { "name": "loading", "value": "加载中..." },
+    { "name": "retry", "value": "重试" },
+    { "name": "no_results", "value": "暂无结果" },
+    { "name": "hot_search", "value": "热搜" },
+    { "name": "recommend", "value": "每日推荐" },
+    { "name": "rank_list", "value": "排行榜" },
+    { "name": "play_all", "value": "播放全部" }
   ]
 }

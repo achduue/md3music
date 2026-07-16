@@ -9,3 +9,11 @@ local.properties
 *.app
 .DS_Store
 Thumbs.db
+
+# Signing materials (generated in CI, never commit)
+signing/
+*.p12
+*.cer
+*.pem
+*.p7b
+*.csr

@@ -1,16 +1,6 @@
 /**
- * ============================================================
- * 声明：本文件由 AI（TRAE 助手）辅助生成，尚未经过技术验证。
- * 代码未在真实 HarmonyOS 设备上编译运行，可能存在编译错误、
- * API 调用不正确等问题，请自行审查测试后使用。
- * 原始项目: https://github.com/zzyoxml/md3Music (Flutter/Android)
- * ============================================================
- */
-
-/**
  * 主页面 - 底部Tab导航
- * 对应原Flutter: app.dart (MainApp with BottomNavigationBar)
- * Tab: 发现 | 搜索 | 设置
+ * Tab: 发现 | 搜索 | 我的
  */
 import router from '@ohos.router'
 import { AppStorageKeys, MD3Colors } from '../common/Constants'
@@ -38,7 +28,9 @@ struct MainPage {
       try {
         this.currentSong = JSON.parse(this.currentSongJson) as Song
         this.showMiniPlayer = true
-      } catch (e) {}
+      } catch (e) {
+        console.warn('恢复当前歌曲状态失败', e)
+      }
     }
 
     // 监听歌曲变化
@@ -60,7 +52,6 @@ struct MainPage {
     }) {
       // 发现页
       TabContent() {
-        // 发现页内容直接内嵌
         this.DiscoverTabContent()
       }
       .tabBar(this.TabBarItem('发现', 0))
@@ -71,7 +62,7 @@ struct MainPage {
       }
       .tabBar(this.TabBarItem('搜索', 1))
 
-      // 设置页
+      // 我的页
       TabContent() {
         this.SettingsTabContent()
       }
@@ -86,7 +77,6 @@ struct MainPage {
     .onChange((index: number) => {
       this.currentTab = index
     })
-
     // 底部区域：迷你播放器 + Tab栏
     .overlay(this.BottomSection())
   }
@@ -135,16 +125,18 @@ struct MainPage {
           .margin({ left: 12 })
           .layoutWeight(1)
 
+          // 播放/暂停
           Button() {
-            Image($r('sys.media.ohos_ic_public_play'))
-              .width(32).height(32)
-              .fillColor(MD3Colors.OnSurface)
+            Text(this.isPlaying ? '⏸' : '▶')
+              .fontSize(18)
+              .fontColor(MD3Colors.OnSurface)
           }
           .type(ButtonType.Circle)
           .backgroundColor(Color.Transparent)
           .margin({ right: 4 })
           .onClick(() => this.player.togglePlay())
 
+          // 下一曲
           Button() {
             Text('▶▶')
               .fontSize(16)
@@ -411,9 +403,13 @@ struct MainPage {
 
       // 设置选项
       Column({ space: 0 }) {
-        this.SettingItem('音质设置', '标准 128kbps', () => {})
+        this.SettingItem('音质设置', '标准 128kbps', () => {
+          router.pushUrl({ url: 'pages/settings/SettingsPage' })
+        })
         Divider().color(MD3Colors.OutlineVariant).margin({ left: 52 })
-        this.SettingItem('播放模式', '列表循环', () => {})
+        this.SettingItem('播放模式', '列表循环', () => {
+          router.pushUrl({ url: 'pages/settings/SettingsPage' })
+        })
         Divider().color(MD3Colors.OutlineVariant).margin({ left: 52 })
         this.SettingItem('关于', 'MD3Music 鸿蒙版 v1.0.0', () => {})
 
@@ -446,7 +442,7 @@ struct MainPage {
     Row() {
       Text(title)
         .fontSize(16)
-        .fontColor(MD3Colors.OnSurface)
+        .fontColor(title === '退出登录' ? MD3Colors.Error : MD3Colors.OnSurface)
         .layoutWeight(1)
 
       if (subtitle) {
@@ -456,15 +452,9 @@ struct MainPage {
           .margin({ right: 8 })
       }
 
-      if (title === '退出登录') {
-        Text(title)
-          .fontSize(16)
-          .fontColor(MD3Colors.Error)
-      } else {
-        Image($r('sys.media.ohos_ic_public_arrow_right'))
-          .width(20).height(20)
-          .fillColor(MD3Colors.Outline)
-      }
+      Text('›')
+        .fontSize(20)
+        .fontColor(MD3Colors.Outline)
     }
     .width('100%')
     .height(56)
