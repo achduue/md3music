@@ -383,7 +383,7 @@ export class PlayerManager {
                 requestCode: 0,
                 wantAgentFlags: [wantAgent.WantAgentFlags.UPDATE_PRESENT_FLAG]
             }
-            const agent: wantAgent.WantAgent = await wantAgent.getWantAgent(wantAgentInfo)
+            const agent = await wantAgent.getWantAgent(wantAgentInfo)
 
             await backgroundTaskManager.startBackgroundRunning(
                 getContext(this),
