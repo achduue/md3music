@@ -1,16 +1,22 @@
 /**
- * 本地存储工具类
- * 使用 @ohos.data.preferences 实现持久化
+ * 本地存储与图片工具
+ * LocalStorage 基于 @ohos.data.preferences 实现持久化；
+ * ImageUtils 处理酷狗图片 URL（补全协议、占位图）。
  */
 import preferences from '@ohos.data.preferences'
 
-const PREF_NAME = 'md3music_prefs'
+const PREF_NAME: string = 'md3music_prefs'
 
+/**
+ * 持久化存储工具类（单例）
+ * 封装 @ohos.data.preferences 的常用读写操作。
+ */
 export class LocalStorage {
     private static instance: LocalStorage
     private pref: preferences.Preferences | null = null
 
-    private constructor() {}
+    private constructor() {
+    }
 
     static async getInstance(): Promise<LocalStorage> {
         if (!LocalStorage.instance) {
@@ -29,77 +35,104 @@ export class LocalStorage {
     }
 
     async getString(key: string, defaultValue: string = ''): Promise<string> {
-        if (!this.pref) return defaultValue
+        const pref: preferences.Preferences | null = this.pref
+        if (!pref) {
+            return defaultValue
+        }
         try {
-            return await this.pref.get(key, defaultValue) as string
+            return await pref.get(key, defaultValue) as string
         } catch (err) {
+            console.error(`读取 ${key} 失败:`, err)
             return defaultValue
         }
     }
 
     async setString(key: string, value: string): Promise<void> {
-        if (!this.pref) return
+        const pref: preferences.Preferences | null = this.pref
+        if (!pref) {
+            return
+        }
         try {
-            await this.pref.put(key, value)
-            await this.pref.flush()
+            await pref.put(key, value)
+            await pref.flush()
         } catch (err) {
             console.error(`存储 ${key} 失败:`, err)
         }
     }
 
     async getNumber(key: string, defaultValue: number = 0): Promise<number> {
-        if (!this.pref) return defaultValue
+        const pref: preferences.Preferences | null = this.pref
+        if (!pref) {
+            return defaultValue
+        }
         try {
-            return await this.pref.get(key, defaultValue) as number
+            return await pref.get(key, defaultValue) as number
         } catch (err) {
+            console.error(`读取 ${key} 失败:`, err)
             return defaultValue
         }
     }
 
     async setNumber(key: string, value: number): Promise<void> {
-        if (!this.pref) return
+        const pref: preferences.Preferences | null = this.pref
+        if (!pref) {
+            return
+        }
         try {
-            await this.pref.put(key, value)
-            await this.pref.flush()
+            await pref.put(key, value)
+            await pref.flush()
         } catch (err) {
             console.error(`存储 ${key} 失败:`, err)
         }
     }
 
     async getBoolean(key: string, defaultValue: boolean = false): Promise<boolean> {
-        if (!this.pref) return defaultValue
+        const pref: preferences.Preferences | null = this.pref
+        if (!pref) {
+            return defaultValue
+        }
         try {
-            return await this.pref.get(key, defaultValue) as boolean
+            return await pref.get(key, defaultValue) as boolean
         } catch (err) {
+            console.error(`读取 ${key} 失败:`, err)
             return defaultValue
         }
     }
 
     async setBoolean(key: string, value: boolean): Promise<void> {
-        if (!this.pref) return
+        const pref: preferences.Preferences | null = this.pref
+        if (!pref) {
+            return
+        }
         try {
-            await this.pref.put(key, value)
-            await this.pref.flush()
+            await pref.put(key, value)
+            await pref.flush()
         } catch (err) {
             console.error(`存储 ${key} 失败:`, err)
         }
     }
 
     async remove(key: string): Promise<void> {
-        if (!this.pref) return
+        const pref: preferences.Preferences | null = this.pref
+        if (!pref) {
+            return
+        }
         try {
-            await this.pref.delete(key)
-            await this.pref.flush()
+            await pref.delete(key)
+            await pref.flush()
         } catch (err) {
             console.error(`删除 ${key} 失败:`, err)
         }
     }
 
     async clear(): Promise<void> {
-        if (!this.pref) return
+        const pref: preferences.Preferences | null = this.pref
+        if (!pref) {
+            return
+        }
         try {
-            await this.pref.clear()
-            await this.pref.flush()
+            await pref.clear()
+            await pref.flush()
         } catch (err) {
             console.error('清除存储失败:', err)
         }
@@ -108,10 +141,12 @@ export class LocalStorage {
 
 /**
  * 图片工具类
- * 处理酷狗图片URL（为空时使用默认占位图）
+ * 处理酷狗图片 URL：空值/无效值使用默认占位图，// 开头补全 https 协议。
  */
 export class ImageUtils {
-    static readonly DEFAULT_COVER: string = 'https://img2.baidu.com/it/u=2641407080,437092947&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=500'
+    /** 稳定的默认封面图（百度图床占位图） */
+    static readonly DEFAULT_COVER: string =
+        'https://img2.baidu.com/it/u=2641407080,437092947&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=500'
 
     static getCoverUrl(url: string): string {
         if (!url || url === '' || url === 'null' || url === 'undefined') {

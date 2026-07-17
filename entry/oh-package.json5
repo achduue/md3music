@@ -5,7 +5,5 @@
   "main": "",
   "author": "",
   "license": "MIT",
-  "dependencies": {
-    "@ohos/axios": "^2.0.0"
-  }
+  "dependencies": {}
 }
