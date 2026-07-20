@@ -1,0 +1,1 @@
+export { default as config } from '@ohos/hvigor-ohos-plugin';

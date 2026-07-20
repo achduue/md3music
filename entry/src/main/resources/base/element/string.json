@@ -1,0 +1,7 @@
+{
+  "string": [
+    { "name": "module_desc", "value": "MD3Music music player module" },
+    { "name": "EntryAbility_desc", "value": "MD3Music" },
+    { "name": "EntryAbility_label", "value": "MD3Music" }
+  ]
+}

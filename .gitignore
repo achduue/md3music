@@ -1,0 +1,11 @@
+node_modules/
+oh_modules/
+.gradle/
+build/
+entry/build/
+entry/oh_modules/
+signing/
+.hvigor/
+local.properties
+*.log
+.DS_Store

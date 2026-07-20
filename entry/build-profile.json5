@@ -1,0 +1,18 @@
+{
+  "apiType": "stageMode",
+  "buildOption": {
+    "arkOptions": {
+      "strictMode": "strict"
+    }
+  },
+  "buildOptionSet": [
+    {
+      "name": "debug",
+      "buildOption": {}
+    },
+    {
+      "name": "release",
+      "buildOption": {}
+    }
+  ]
+}

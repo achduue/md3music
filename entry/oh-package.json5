@@ -1,0 +1,6 @@
+{
+  "name": "entry",
+  "version": "1.0.0",
+  "main": "src/main/ets/entryability/EntryAbility.ets",
+  "dependencies": {}
+}
