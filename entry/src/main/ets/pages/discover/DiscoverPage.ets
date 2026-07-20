@@ -4,7 +4,7 @@
  * 流程:
  * 1. 从 AppStorage 获取 rank_id 和 rank_name
  * 2. 调用 KugouApi.getInstance().getRankSongs(rankId, page) 加载歌曲
- * 3. 解析响应：result['data']['info'] as Record<string, Object>[]，每项用 Song.fromKugouRank() 解析
+ * 3. 解析响应：result['songs']['list'] as Record<string, Object>[]，每项用 Song.fromKugouRank() 解析
  * 4. 过滤无效歌曲（标题为空或时长为 0）
  * 5. 点击歌曲 → PlayerManager.playOnlinePlaylist()
  * 6. 支持分页加载更多（onReachEnd）
@@ -91,20 +91,35 @@ struct DiscoverPage {
 
     /**
      * 解析排行榜歌曲列表
-     * 响应结构：result['data']['info'] 为 Record<string, Object>[]，每项用 Song.fromKugouRank() 解析
+     * 新API响应结构：result['songs']['list'] 为 Record<string, Object>[]，每项用 Song.fromKugouRank() 解析
+     * 旧格式兼容：result['data']['info'] 为数组
      * 过滤无效歌曲（标题为空 / 为 "-" / 时长为 0）
      */
     private parseRankSongs(result: Record<string, Object>): Song[] {
-        const data: Object | undefined = result['data']
-        if (!data) {
-            return []
+        let arr: Record<string, Object>[] = []
+
+        // 新API格式：result['songs']['list']
+        const songs: Object | undefined = result['songs']
+        if (songs) {
+            const songsObj: Record<string, Object> = songs as Record<string, Object>
+            const songsList: Object | undefined = songsObj['list']
+            if (songsList && Array.isArray(songsList)) {
+                arr = songsList as Record<string, Object>[]
+            }
         }
-        const dataObj: Record<string, Object> = data as Record<string, Object>
-        const info: Object | undefined = dataObj['info']
-        if (!info || !Array.isArray(info)) {
-            return []
+
+        // 旧格式兼容：result['data']['info']
+        if (arr.length === 0) {
+            const data: Object | undefined = result['data']
+            if (data) {
+                const dataObj: Record<string, Object> = data as Record<string, Object>
+                const info: Object | undefined = dataObj['info']
+                if (info && Array.isArray(info)) {
+                    arr = info as Record<string, Object>[]
+                }
+            }
         }
-        const arr: Record<string, Object>[] = info as Record<string, Object>[]
+
         return arr.map((item: Record<string, Object>) => Song.fromKugouRank(item))
             .filter((s: Song) => s.title !== '' && s.title !== '-' && s.duration > 0)
     }

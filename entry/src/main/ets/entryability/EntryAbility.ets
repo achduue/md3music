@@ -23,7 +23,7 @@ import { PlayerManager } from '../utils/PlayerManager'
 const PREF_NAME: string = 'md3music_prefs'
 
 export default class EntryAbility extends UIAbility {
-    async onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): Promise<void> {
+    onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
         console.info('[MD3Music] EntryAbility onCreate')
 
         // 设置 AppStorage 默认值
@@ -33,7 +33,10 @@ export default class EntryAbility extends UIAbility {
         AppStorage.setOrCreate(AppStorageKeys.AUDIO_QUALITY, '128')
 
         // 加载 localStorage（preferences），恢复登录状态到 AppStorage
-        await this.restoreLoginState()
+        // UIAbility 生命周期方法不使用 async/await，改用 .then() 处理异步
+        this.restoreLoginState().catch((err: Error) => {
+            console.error('[MD3Music] restore login state failed:', err.message)
+        })
     }
 
     /**
@@ -73,6 +76,16 @@ export default class EntryAbility extends UIAbility {
 
     onWindowStageCreate(windowStage: window.WindowStage): void {
         console.info('[MD3Music] EntryAbility onWindowStageCreate')
+
+        // 初始化播放器：先传入 context（后台长时任务依赖 UIAbility context），
+        // 再调用 initPlayer() 创建 AVPlayer 并注册监听
+        const player: PlayerManager = PlayerManager.getInstance()
+        player.setContext(this.context)
+        player.initPlayer().then(() => {
+            console.info('[MD3Music] player initPlayer success')
+        }).catch((err: BusinessError) => {
+            console.error('[MD3Music] player initPlayer failed:', err.message)
+        })
 
         // 加载入口页面
         windowStage.loadContent('pages/MainPage', (err: BusinessError) => {

@@ -55,12 +55,38 @@ export class Song {
      * 从排行榜结果解析（兼容大小写字段名）
      * 排行榜接口字段命名不统一，此处对 hash / 标题 / 歌手 / 专辑 / 时长 / 专辑ID
      * 做大小写兼容回退。
+     * 新API（m.kugou.com/rank/info）字段：
+     * - hash（文件hash，大写）→ song.hash
+     * - filename（"歌手 - 歌曲名"）→ 拆分为 artist 和 title
+     * - duration（秒数）→ song.duration
+     * - album_id → song.albumId
+     * 注意：rank API 不返回 FileHash/AlbumName/Image300 等字段，使用默认值。
      */
     static fromKugouRank(item: Record<string, Object>): Song {
         const song: Song = Song.fromKugouSearch(item)
         if (!song.hash) {
             song.hash = (item['hash'] as string) || (item['Hash'] as string) || ''
             song.id = song.hash
+        }
+        // filename 格式 "歌手 - 歌曲名"，按首个 " - " 拆分为 artist 与 title
+        if (!song.title || !song.artist) {
+            const filename: string = (item['filename'] as string) || ''
+            if (filename) {
+                const sepIdx: number = filename.indexOf(' - ')
+                if (sepIdx >= 0) {
+                    const artistPart: string = filename.substring(0, sepIdx).trim()
+                    const titlePart: string = filename.substring(sepIdx + 3).trim()
+                    if (!song.artist && artistPart) {
+                        song.artist = Song.decodeHtml(artistPart)
+                    }
+                    if (!song.title && titlePart) {
+                        song.title = Song.decodeHtml(titlePart)
+                    }
+                } else if (!song.title) {
+                    // 无分隔符时整串作为标题
+                    song.title = Song.decodeHtml(filename.trim())
+                }
+            }
         }
         if (!song.title) {
             song.title = Song.decodeHtml(
@@ -94,10 +120,21 @@ export class Song {
 
     /**
      * 从音频URL响应中提取播放地址
-     * 依次检查：data.url、data.play_url、data.info[].url、data.info.play_url、
-     * data 为数组时的 *.url、data.url_info[].url
+     * 优先级：
+     * 1. result['url']（顶层，新API格式：{ url, status, songName, hash }）
+     * 2. result['data']['url']（旧格式兼容）
+     * 3. result['data']['play_url']（旧格式兼容）
+     * 4. result['data']['info'] 为数组时取首个元素的 url
+     * 其余回退：data.info 为对象、data 本身为数组、data.url_info 数组
      */
     static extractPlayUrl(result: Record<string, Object>): string {
+        // 1. 顶层 url（新API格式）
+        const topUrl: string = (result['url'] as string) || ''
+        if (topUrl) {
+            return topUrl
+        }
+
+        // 2~4. data 对象（旧格式兼容）
         const data: Object | undefined = result['data']
         if (!data) {
             return ''
@@ -105,14 +142,16 @@ export class Song {
 
         // data 作为对象
         const dataObj: Record<string, Object> = data as Record<string, Object>
+        // 2. data.url
         if (dataObj['url']) {
             return (dataObj['url'] as string) || ''
         }
+        // 3. data.play_url
         if (dataObj['play_url']) {
             return (dataObj['play_url'] as string) || ''
         }
 
-        // data.info 可能是数组或对象
+        // 4. data.info 可能是数组或对象
         const info: Object | undefined = dataObj['info']
         if (info) {
             if (Array.isArray(info)) {

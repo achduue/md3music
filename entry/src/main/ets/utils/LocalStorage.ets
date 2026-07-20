@@ -4,6 +4,7 @@
  * ImageUtils 处理酷狗图片 URL（补全协议、占位图）。
  */
 import preferences from '@ohos.data.preferences'
+import common from '@ohos.app.ability.common'
 
 const PREF_NAME: string = 'md3music_prefs'
 
@@ -18,17 +19,21 @@ export class LocalStorage {
     private constructor() {
     }
 
-    static async getInstance(): Promise<LocalStorage> {
+    static async getInstance(context?: common.Context): Promise<LocalStorage> {
         if (!LocalStorage.instance) {
             LocalStorage.instance = new LocalStorage()
-            await LocalStorage.instance.init()
+            await LocalStorage.instance.init(context)
         }
         return LocalStorage.instance
     }
 
-    private async init(): Promise<void> {
+    private async init(context?: common.Context): Promise<void> {
         try {
-            this.pref = await preferences.getPreferences(getContext(this), PREF_NAME)
+            if (context) {
+                this.pref = await preferences.getPreferences(context, PREF_NAME)
+            } else {
+                console.warn('LocalStorage.init: no context provided, preferences will not be available')
+            }
         } catch (err) {
             console.error('初始化 preferences 失败:', err)
         }

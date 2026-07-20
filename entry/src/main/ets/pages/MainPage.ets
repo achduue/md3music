@@ -122,24 +122,38 @@ struct MainPage {
 
     /**
      * 解析排行榜列表响应
-     * 响应结构：result['data'] 为 Record<string, Object>[]，每项用 RankListItem.fromRecord() 解析
-     * 兼容 data 为对象（包含 list/rank 字段）的情况
+     * 新API响应结构：result['rank']['list'] 为 Record<string, Object>[]
+     * 旧格式兼容：result['data'] 为数组，或对象包含 list/rank/ranks 字段
      */
     private parseRankList(result: Record<string, Object>): RankListItem[] {
-        const data: Object | undefined = result['data']
-        if (!data) {
-            return []
-        }
         let arr: Record<string, Object>[] = []
-        if (Array.isArray(data)) {
-            arr = data as Record<string, Object>[]
-        } else {
-            const dataObj: Record<string, Object> = data as Record<string, Object>
-            const list: Object | undefined = dataObj['list'] || dataObj['rank'] || dataObj['ranks']
-            if (list && Array.isArray(list)) {
-                arr = list as Record<string, Object>[]
+
+        // 新API格式：result['rank']['list']
+        const rank: Object | undefined = result['rank']
+        if (rank) {
+            const rankObj: Record<string, Object> = rank as Record<string, Object>
+            const rankList: Object | undefined = rankObj['list']
+            if (rankList && Array.isArray(rankList)) {
+                arr = rankList as Record<string, Object>[]
             }
         }
+
+        // 旧格式兼容：result['data']
+        if (arr.length === 0) {
+            const data: Object | undefined = result['data']
+            if (data) {
+                if (Array.isArray(data)) {
+                    arr = data as Record<string, Object>[]
+                } else {
+                    const dataObj: Record<string, Object> = data as Record<string, Object>
+                    const list: Object | undefined = dataObj['list'] || dataObj['rank'] || dataObj['ranks']
+                    if (list && Array.isArray(list)) {
+                        arr = list as Record<string, Object>[]
+                    }
+                }
+            }
+        }
+
         return arr.map((item: Record<string, Object>) => RankListItem.fromRecord(item))
             .filter((r: RankListItem) => r.id !== '' && r.name !== '')
     }

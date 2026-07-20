@@ -13,6 +13,7 @@ import { Song } from '../models/Song'
 import { KugouApi } from '../api/KugouApi'
 import { AppStorageKeys, AudioQuality, PlayMode } from '../common/Constants'
 import { LyricData, LyricLine } from '../models/UserInfo'
+import common from '@ohos.app.ability.common'
 
 export class PlayerManager {
     private static instance: PlayerManager
@@ -31,6 +32,7 @@ export class PlayerManager {
     private _currentLyricIndex: number = 0
     private _isPrepared: boolean = false
     private _isUrlLoading: boolean = false
+    private appContext: common.Context | null = null
 
     // 状态变更回调
     onPlayingChanged?: (isPlaying: boolean) => void
@@ -42,10 +44,16 @@ export class PlayerManager {
     onError?: (msg: string) => void
 
     private constructor() {
-        const modeVal: number | undefined = AppStorage.get<number>(AppStorageKeys.PLAY_MODE)
-        this._playMode = (modeVal !== undefined ? modeVal : PlayMode.LOOP) as PlayMode
-        const quality: string = AppStorage.get<string>(AppStorageKeys.AUDIO_QUALITY) || '128'
-        this._audioQuality = quality as AudioQuality
+        // 不在构造函数中读取 AppStorage，避免 AppStorage 未初始化时出错
+        // 播放模式与音质在 initPlayer() 中读取（此时 AppStorage 已由 EntryAbility 初始化）
+    }
+
+    /**
+     * 由 EntryAbility 在 onWindowStageCreate 中调用，传入正确的 context
+     * 后台长时任务需要使用 UIAbility 的 context，而非 getContext(this)
+     */
+    public setContext(context: common.Context): void {
+        this.appContext = context
     }
 
     static getInstance(): PlayerManager {
@@ -94,11 +102,19 @@ export class PlayerManager {
     /**
      * 初始化 AVPlayer
      * 在设置 url 之前注册所有监听（stateChange / error / timeUpdate / durationUpdate / audioInterrupt）
+     * 由 EntryAbility 在 onWindowStageCreate 中调用（传入 context 后），
+     * 也可在首次播放时延迟调用。
      */
-    private async initPlayer(): Promise<void> {
+    public async initPlayer(): Promise<void> {
         if (this.avPlayer) {
             return
         }
+
+        // 在 EntryAbility onCreate 中 AppStorage 已初始化，此处安全读取播放模式与音质
+        const modeVal: number | undefined = AppStorage.get<number>(AppStorageKeys.PLAY_MODE)
+        this._playMode = (modeVal !== undefined ? modeVal : PlayMode.LOOP) as PlayMode
+        const quality: string = AppStorage.get<string>(AppStorageKeys.AUDIO_QUALITY) || '128'
+        this._audioQuality = quality as AudioQuality
 
         const player: media.AVPlayer = await media.createAVPlayer()
         this.avPlayer = player
@@ -367,10 +383,14 @@ export class PlayerManager {
 
     /**
      * 启动后台播放长时任务
-     * 使用 backgroundTaskManager + wantAgent，context 通过 getContext(this) 获取
+     * 使用 backgroundTaskManager + wantAgent，context 由 EntryAbility 通过 setContext 注入
      */
     async startContinuousTask(): Promise<void> {
         if (this.isContinuousTaskRunning) {
+            return
+        }
+        if (!this.appContext) {
+            console.warn('[BackgroundTask] appContext is null, skip start (call setContext first)')
             return
         }
         try {
@@ -386,7 +406,7 @@ export class PlayerManager {
             const agent = await wantAgent.getWantAgent(wantAgentInfo)
 
             await backgroundTaskManager.startBackgroundRunning(
-                getContext(this),
+                this.appContext,
                 backgroundTaskManager.BackgroundMode.AUDIO_PLAYBACK,
                 agent
             )
@@ -404,8 +424,12 @@ export class PlayerManager {
         if (!this.isContinuousTaskRunning) {
             return
         }
+        if (!this.appContext) {
+            console.warn('[BackgroundTask] appContext is null, skip stop')
+            return
+        }
         try {
-            await backgroundTaskManager.stopBackgroundRunning(getContext(this))
+            await backgroundTaskManager.stopBackgroundRunning(this.appContext)
             this.isContinuousTaskRunning = false
             console.info('[BackgroundTask] continuous task stopped')
         } catch (err) {
@@ -417,24 +441,24 @@ export class PlayerManager {
 
     /**
      * 获取歌词
+     * 调用 KugouApi.getLyric(title, artist, hash, durationMs)，
+     * 该方法内部先搜索歌词再下载，返回 { lyrics: 'LRC内容' }。
      */
     private async fetchLyric(song: Song): Promise<void> {
         try {
-            if (!song.lyricId && !song.accesskey) {
-                console.info('[Player] no lyric id, skip')
+            if (!song.hash) {
+                console.info('[Player] no song hash, skip lyric')
                 return
             }
             const api: KugouApi = KugouApi.getInstance()
-            const result: Record<string, Object> = await api.getLyric(song.lyricId, song.accesskey)
+            const result: Record<string, Object> = await api.getLyric(
+                song.title, song.artist, song.hash, song.duration * 1000
+            )
 
-            if (Number(result['status']) === 1 && result['data']) {
-                const lyricInfo: Record<string, Object> = result['data'] as Record<string, Object>
-                const content: string = (lyricInfo['decodeContent'] as string) ||
-                    (lyricInfo['content'] as string) || ''
-                if (content) {
-                    this._lyricData = this.parseLrc(content)
-                    this._currentLyricIndex = 0
-                }
+            const content: string = (result['lyrics'] as string) || ''
+            if (content) {
+                this._lyricData = this.parseLrc(content)
+                this._currentLyricIndex = 0
             }
         } catch (err) {
             console.error('[Player] fetchLyric failed:', err)
