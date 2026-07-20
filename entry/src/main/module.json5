@@ -44,21 +44,6 @@
       {
         "name": "ohos.permission.KEEP_BACKGROUND_RUNNING"
       }
-    ],
-    "networkConfig": {
-      "securityConfig": {
-        "domainConfig": [
-          {
-            "cleartextTraffic": true,
-            "domains": [
-              {
-                "includeSubDomains": true,
-                "name": "115.29.236.96"
-              }
-            ]
-          }
-        ]
-      }
-    }
+    ]
   }
 }
